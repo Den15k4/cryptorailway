@@ -15,11 +15,30 @@ let game = {
 
 let saveGameTimeout;
 
+function updateLoadingProgress(progress) {
+    const progressBar = document.getElementById('progress-bar');
+    progressBar.style.width = `${progress}%`;
+}
+
+function hideLoadingScreen() {
+    const loadingScreen = document.getElementById('loading-screen');
+    loadingScreen.style.opacity = '0';
+    setTimeout(() => {
+        loadingScreen.style.display = 'none';
+    }, 500);
+}
+
 async function initGame() {
+    updateLoadingProgress(10);
     await loadGame();
+    updateLoadingProgress(40);
     await updateLeaderboard();
+    updateLoadingProgress(70);
     initUI();
+    updateLoadingProgress(90);
     checkReferral();
+    updateLoadingProgress(100);
+    setTimeout(hideLoadingScreen, 500);
 }
 
 function initUI() {
@@ -29,14 +48,12 @@ function initUI() {
 
 async function handleReferral(referralCode) {
     try {
-        const userRef = firebase.database().ref(`users/${tg.initDataUnsafe.user.id}`);
-        const snapshot = await userRef.once('value');
-        const userData = snapshot.val() || game;
-
-        if (!userData.referrals.includes(referralCode)) {
-            userData.referrals.push(referralCode);
-            userData.balance += game.referralBonus;
-            await userRef.update(userData);
+        const response = await fetch(`/api/referral/${tg.initDataUnsafe.user.id}/${referralCode}`, {
+            method: 'POST'
+        });
+        if (response.ok) {
+            const data = await response.json();
+            game.balance += game.referralBonus;
             showNotification(`Вы получили бонус ${game.referralBonus} монет за нового реферала!`);
             updateUI();
             await updateLeaderboard();
@@ -61,56 +78,57 @@ function formatNumber(num) {
 
 async function loadGame() {
     try {
-        const userRef = firebase.database().ref(`users/${tg.initDataUnsafe.user.id}`);
-        const snapshot = await userRef.once('value');
-        if (snapshot.exists()) {
-            Object.assign(game, snapshot.val());
+        const response = await fetch(`/api/game/${tg.initDataUnsafe.user.id}`);
+        if (response.ok) {
+            const userData = await response.json();
+            Object.assign(game, userData);
+            
+            const now = Date.now();
+            const offlineTime = now - game.lastLoginTime;
+            const maxOfflineTime = 4 * 60 * 60 * 1000;
+            if (offlineTime > maxOfflineTime) {
+                const excessTime = offlineTime - maxOfflineTime;
+                game.lastClaimTime += excessTime;
+            }
+            game.lastLoginTime = now;
+            updateUI();
         } else {
-            await userRef.set(game);
+            console.error('Failed to load game data');
+            showNotification('Ошибка при загрузке данных. Попробуйте перезагрузить страницу.');
         }
-        
-        const now = Date.now();
-        const offlineTime = now - game.lastLoginTime;
-        const maxOfflineTime = 4 * 60 * 60 * 1000;
-        if (offlineTime > maxOfflineTime) {
-            const excessTime = offlineTime - maxOfflineTime;
-            game.lastClaimTime += excessTime;
-        }
-        game.lastLoginTime = now;
-        updateUI();
     } catch (error) {
-        console.error('Ошибка при загрузке игры:', error);
+        console.error('Error loading game:', error);
         showNotification('Ошибка при загрузке данных. Попробуйте перезагрузить страницу.');
     }
 }
 
 async function saveGame() {
     try {
-        const userRef = firebase.database().ref(`users/${tg.initDataUnsafe.user.id}`);
-        await userRef.update(game);
+        const response = await fetch(`/api/game/${tg.initDataUnsafe.user.id}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(game),
+        });
+        if (!response.ok) {
+            throw new Error('Failed to save game data');
+        }
         await updateLeaderboard();
     } catch (error) {
-        console.error('Ошибка при сохранении игры:', error);
+        console.error('Error saving game:', error);
         showNotification('Не удалось сохранить прогресс. Проверьте подключение к интернету.');
     }
 }
 
 async function updateLeaderboard() {
-    const leaderboardRef = firebase.database().ref('leaderboard');
-    const userRef = firebase.database().ref(`users/${tg.initDataUnsafe.user.id}`);
-    
     try {
-        const snapshot = await userRef.once('value');
-        const userData = snapshot.val();
-        
-        if (userData) {
-            const leaderboardEntry = {
-                telegramId: tg.initDataUnsafe.user.id,
-                username: tg.initDataUnsafe.user.username || 'Аноним',
-                balance: userData.balance
-            };
-            
-            await leaderboardRef.child(tg.initDataUnsafe.user.id).set(leaderboardEntry);
+        const response = await fetch('/api/leaderboard');
+        if (response.ok) {
+            const leaderboardData = await response.json();
+            updateLeaderboardUI(leaderboardData);
+        } else {
+            console.error('Failed to fetch leaderboard data');
         }
     } catch (error) {
         console.error('Error updating leaderboard:', error);
@@ -197,39 +215,38 @@ function showBoostersTab() {
 
 async function showLeaderboardTab() {
     try {
-        const leaderboardRef = firebase.database().ref('leaderboard');
-        const snapshot = await leaderboardRef.orderByChild('balance').once('value');
-        const leaderboardData = [];
-        snapshot.forEach((childSnapshot) => {
-            leaderboardData.unshift(childSnapshot.val());
-        });
-
-        let content = `
-            <h2>Топ игроков</h2>
-            <div id="leaderboard">
-                <table>
-                    <tr><th>Место</th><th>Ник</th><th>Счет</th></tr>
-        `;
-
-        leaderboardData.forEach((player, index) => {
-            content += `
-                <tr>
-                    <td>${index + 1}</td>
-                    <td><img src="icon_button/telegram-icon.png" alt="Telegram" class="telegram-icon">${player.username}</td>
-                    <td>${formatNumber(player.balance)}</td>
-                </tr>
+        const response = await fetch('/api/leaderboard');
+        if (response.ok) {
+            const leaderboardData = await response.json();
+            let content = `
+                <h2>Топ игроков</h2>
+                <div id="leaderboard">
+                    <table>
+                        <tr><th>Место</th><th>Ник</th><th>Счет</th></tr>
             `;
-        });
 
-        const playerRank = leaderboardData.findIndex(player => player.telegramId === tg.initDataUnsafe.user.id) + 1;
+            leaderboardData.forEach((player, index) => {
+                content += `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td><img src="icon_button/telegram-icon.png" alt="Telegram" class="telegram-icon">${player.username}</td>
+                        <td>${formatNumber(player.balance)}</td>
+                    </tr>
+                `;
+            });
 
-        content += `
-                </table>
-            </div>
-            <p>Ваше место: ${playerRank || 'N/A'}</p>
-        `;
+            const playerRank = leaderboardData.findIndex(player => player.user_id === tg.initDataUnsafe.user.id) + 1;
 
-        document.getElementById('mainContent').innerHTML = content;
+            content += `
+                    </table>
+                </div>
+                <p>Ваше место: ${playerRank || 'N/A'}</p>
+            `;
+
+            document.getElementById('mainContent').innerHTML = content;
+        } else {
+            throw new Error('Failed to fetch leaderboard data');
+        }
     } catch (error) {
         console.error('Error fetching leaderboard:', error);
         document.getElementById('mainContent').innerHTML = '<p>Ошибка при загрузке таблицы лидеров</p>';
@@ -291,22 +308,28 @@ async function claim() {
         return;
     }
     try {
-        const userRef = firebase.database().ref(`users/${tg.initDataUnsafe.user.id}`);
-        const snapshot = await userRef.once('value');
-        const userData = snapshot.val();
+        const response = await fetch(`/api/claim/${tg.initDataUnsafe.user.id}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ amount: game.currentMining }),
+        });
         
-        userData.balance += game.currentMining;
-        userData.currentMining = 0;
-        userData.lastClaimTime = Date.now();
-        
-        await userRef.update(userData);
-        
-        Object.assign(game, userData);
-        updateUI();
-        showClaimEffect();
-        showNotification("Крипто успешно собрано!");
-        sendMessageToBot(`Пользователь ${tg.initDataUnsafe.user.username} собрал ${formatNumber(game.currentMining)} монет!`);
-        await updateLeaderboard();
+        if (response.ok) {
+            const data = await response.json();
+            game.balance += game.currentMining;
+            game.currentMining = 0;
+            game.lastClaimTime = Date.now();
+            
+            updateUI();
+            showClaimEffect();
+            showNotification("Крипто успешно собрано!");
+            sendMessageToBot(`Пользователь ${tg.initDataUnsafe.user.username} собрал ${formatNumber(data.amount)} монет!`);
+            await updateLeaderboard();
+        } else {
+            throw new Error('Failed to claim mining');
+        }
     } catch (error) {
         console.error('Error claiming mining:', error);
         showNotification("Произошла ошибка при сборе крипто. Попробуйте еще раз.");
@@ -347,19 +370,21 @@ async function showSubscribeModal(channelLink, channelIndex) {
 
 async function checkSubscription(channelIndex) {
     try {
-        const userRef = firebase.database().ref(`users/${tg.initDataUnsafe.user.id}`);
-        const snapshot = await userRef.once('value');
-        const userData = snapshot.val();
-
-        if (!userData.subscribedChannels.includes(channelIndex)) {
-            userData.subscribedChannels.push(channelIndex);
-            userData.miningRate += 0.003;
-            await userRef.update(userData);
-            Object.assign(game, userData);
-            showNotification("Ускоритель активирован! +0.003 к скорости добычи");
-            updateUI();
+        const response = await fetch(`/api/subscribe/${tg.initDataUnsafe.user.id}/${channelIndex}`, {
+            method: 'POST'
+        });
+        if (response.ok) {
+            const data = await response.json();
+            if (!game.subscribedChannels.includes(channelIndex)) {
+                game.subscribedChannels.push(channelIndex);
+                game.miningRate += 0.003;
+                showNotification("Ускоритель активирован! +0.003 к скорости добычи");
+                updateUI();
+            } else {
+                showNotification("Вы уже активировали этот ускоритель.");
+            }
         } else {
-            showNotification("Вы уже активировали этот ускоритель.");
+            throw new Error('Failed to check subscription');
         }
     } catch (error) {
         console.error('Error checking subscription:', error);
@@ -370,28 +395,21 @@ async function checkSubscription(channelIndex) {
 
 async function claimDailyBonus() {
     try {
-        const userRef = firebase.database().ref(`users/${tg.initDataUnsafe.user.id}`);
-        const snapshot = await userRef.once('value');
-        const userData = snapshot.val();
-
-        const now = Date.now();
-        const oneDayInMs = 24 * 60 * 60 * 1000;
-        
-        if (now - userData.lastDailyBonusTime > oneDayInMs) {
-            userData.dailyBonusDay = (userData.dailyBonusDay % 10) + 1;
-            const bonusAmount = [1, 1, 2, 3, 5, 8, 13, 21, 34, 55][userData.dailyBonusDay - 1];
+        const response = await fetch(`/api/daily-bonus/${tg.initDataUnsafe.user.id}`, {
+            method: 'POST'
+        });
+        if (response.ok) {
+            const data = await response.json();
+            game.balance += data.bonusAmount;
+            game.dailyBonusDay = data.newDailyBonusDay;
+            game.lastDailyBonusTime = Date.now();
             
-            userData.balance += bonusAmount;
-            userData.lastDailyBonusTime = now;
-            
-            await userRef.update(userData);
-            Object.assign(game, userData);
-            
-            showNotification(`Вы получили ежедневный бонус: ${bonusAmount} монет!`);
+            showNotification(`Вы получили ежедневный бонус: ${data.bonusAmount} монет!`);
             updateUI();
             await updateLeaderboard();
         } else {
-            showNotification("Вы уже забрали сегодняшний бонус. Приходите завтра!");
+            const errorData = await response.json();
+            showNotification(errorData.message || "Не удалось получить ежедневный бонус. Попробуйте позже.");
         }
     } catch (error) {
         console.error('Error claiming daily bonus:', error);
@@ -429,20 +447,23 @@ async function submitVideo() {
         const videoLink = document.getElementById('videoLink').value;
         if (videoLink) {
             try {
-                const userRef = firebase.database().ref(`users/${tg.initDataUnsafe.user.id}`);
-                const snapshot = await userRef.once('value');
-                const userData = snapshot.val();
-                
-                const reward = 5; // Фиксированная награда за видео
-                userData.balance += reward;
-                
-                await userRef.update(userData);
-                Object.assign(game, userData);
-                
-                showNotification(`Видео принято! Вы получили ${reward} монет.`);
-                updateUI();
-                await updateLeaderboard();
-                hideModal();
+                const response = await fetch(`/api/submit-video/${tg.initDataUnsafe.user.id}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ videoLink }),
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    game.balance += data.reward;
+                    showNotification(`Видео принято! Вы получили ${data.reward} монет.`);
+                    updateUI();
+                    await updateLeaderboard();
+                    hideModal();
+                } else {
+                    throw new Error('Failed to submit video');
+                }
             } catch (error) {
                 console.error('Error submitting video:', error);
                 showNotification("Произошла ошибка при отправке видео. Попробуйте позже.");
@@ -577,17 +598,6 @@ document.addEventListener('DOMContentLoaded', () => {
             loadTabContent(tab);
         });
     });
-});
-
-particlesJS("particles-js", {
-    particles: {
-        number: { value: 400, density: { enable: true, value_area: 800 } },
-        color: { value: "#fff" },
-        shape: { type: "circle" },
-        opacity: { value: 0.5, random: true },
-        size: { value: 3, random: true },
-        move: { enable: true, speed: 1, direction: "bottom", straight: false }
-    }
 });
 
 setInterval(() => {
