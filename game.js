@@ -83,7 +83,7 @@ function formatNumber(num) {
 async function loadGame() {
     try {
         console.log('Loading game data for user:', tg.initDataUnsafe.user.id);
-        const response = await fetch(`/api/game/${tg.initDataUnsafe.user.id}`);
+        const response = await fetch(`/api/game/${tg.initDataUnsafe.user.id}?username=${encodeURIComponent(tg.initDataUnsafe.user.username)}`);
         console.log('Response status:', response.status);
         if (response.ok) {
             const userData = await response.json();
@@ -171,7 +171,6 @@ function updateUI() {
         balanceElement.textContent = formatNumber(game.balance);
     }
 }
-
 function animateValue(element, start, end, duration) {
     let startTimestamp = null;
     const step = (timestamp) => {
@@ -225,32 +224,7 @@ async function showLeaderboardTab() {
         const response = await fetch('/api/leaderboard');
         if (response.ok) {
             const leaderboardData = await response.json();
-            let content = `
-                <h2>Топ игроков</h2>
-                <div id="leaderboard">
-                    <table>
-                        <tr><th>Место</th><th>Ник</th><th>Счет</th></tr>
-            `;
-
-            leaderboardData.forEach((player, index) => {
-                content += `
-                    <tr>
-                        <td>${index + 1}</td>
-                        <td><img src="icon_button/telegram-icon.png" alt="Telegram" class="telegram-icon">${player.username || 'Аноним'}</td>
-                        <td>${formatNumber(player.balance)}</td>
-                    </tr>
-                `;
-            });
-
-            const playerRank = leaderboardData.findIndex(player => player.id === tg.initDataUnsafe.user.id) + 1;
-
-            content += `
-                    </table>
-                </div>
-                <p>Ваше место: ${playerRank || 'N/A'}</p>
-            `;
-
-            document.getElementById('mainContent').innerHTML = content;
+            updateLeaderboardUI(leaderboardData);
         } else {
             throw new Error('Failed to fetch leaderboard data');
         }
@@ -258,6 +232,35 @@ async function showLeaderboardTab() {
         console.error('Error fetching leaderboard:', error);
         document.getElementById('mainContent').innerHTML = '<p>Ошибка при загрузке таблицы лидеров</p>';
     }
+}
+
+function updateLeaderboardUI(leaderboardData) {
+    let content = `
+        <h2>Топ игроков</h2>
+        <div id="leaderboard">
+            <table>
+                <tr><th>Место</th><th>Ник</th><th>Счет</th></tr>
+    `;
+
+    leaderboardData.forEach((player, index) => {
+        content += `
+            <tr>
+                <td>${index + 1}</td>
+                <td><img src="icon_button/telegram-icon.png" alt="Telegram" class="telegram-icon">${player.username || 'Аноним'}</td>
+                <td>${formatNumber(player.balance)}</td>
+            </tr>
+        `;
+    });
+
+    content += `
+            </table>
+        </div>
+    `;
+
+    const playerRank = leaderboardData.findIndex(player => player.id === tg.initDataUnsafe.user.id) + 1;
+    content += `<p>Ваше место: ${playerRank || 'N/A'}</p>`;
+
+    document.getElementById('mainContent').innerHTML = content;
 }
 
 function showDailyTab() {
@@ -548,128 +551,103 @@ function showDailyBonusModal() {
                 <div class="coin-icon"></div>
                 <div class="bonus-amount">${bonusAmounts[i-1]}</div>
             </div>
-        `;}
-
-        const modalContent = `
-            <div class="daily-bonus-container">
-                <div class="bonus-icon">🎁</div>
-                <h2>Ежедневный буст</h2>
-                <p>Получайте $SWITCH за ежедневный логин,<br>не пропуская ни одного</p>
-                <div class="days-grid">
-                    ${daysHtml}
-                </div>
-                <button id="claimDailyBonus" class="claim-button" ${currentDay > 10 ? 'disabled' : ''}>
-                    ${currentDay > 10 ? 'Возвращайтесь завтра' : 'Получить бонус'}
-                </button>
-            </div>
         `;
-    
-        showModal(modalContent);
-        document.getElementById('claimDailyBonus').addEventListener('click', claimDailyBonus);
     }
-    
-    async function sendMessageToBot(message) {
-        try {
-            const response = await fetch('/send-message', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ message }),
-            });
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            const result = await response.json();
-            console.log(result.message);
-        } catch (error) {
-            console.error('Error sending message to bot:', error);
-        }
-    }
-    
-    document.addEventListener('DOMContentLoaded', () => {
-        console.log('DOMContentLoaded event fired');
-        initGame();
-        document.body.addEventListener('click', (event) => {
-            if (event.target.closest('#miningContainer')) {
-                handleManualMining(event);
-            }
-        });
-        
-        const tabButtons = document.querySelectorAll('.tab-button');
-        tabButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                tabButtons.forEach(btn => btn.classList.remove('active'));
-                button.classList.add('active');
-                const tab = button.getAttribute('data-tab');
-                loadTabContent(tab);
-            });
-        });
-    });
-    
-    function updateLeaderboardUI(leaderboardData) {
-        const leaderboardElement = document.getElementById('leaderboard');
-        if (leaderboardElement) {
-            let content = '<table><tr><th>Место</th><th>Ник</th><th>Счет</th></tr>';
-            leaderboardData.forEach((player, index) => {
-                content += `
-                    <tr>
-                        <td>${index + 1}</td>
-                        <td><img src="icon_button/telegram-icon.png" alt="Telegram" class="telegram-icon">${player.username || 'Аноним'}</td>
-                        <td>${formatNumber(player.balance)}</td>
-                    </tr>
-                `;
-            });
-            content += '</table>';
-            leaderboardElement.innerHTML = content;
-    
-            const playerRank = leaderboardData.findIndex(player => player.id === tg.initDataUnsafe.user.id) + 1;
-            const rankElement = document.querySelector('p:contains("Ваше место:")');
-            if (rankElement) {
-                rankElement.textContent = `Ваше место: ${playerRank || 'N/A'}`;
-            }
-        }
-    }
-    
-    setInterval(() => {
-        updateMining();
-    }, 1000);
-    
-    setInterval(() => {
-        saveGame();
-    }, 5000);
-    
-    window.addEventListener('beforeunload', () => {
-        saveGame();
-    });
-    
-    // Инициализация частиц
-    function initParticles() {
-        particlesJS("particles-js", {
-            particles: {
-                number: { value: 80, density: { enable: true, value_area: 800 } },
-                color: { value: "#ffffff" },
-                shape: { type: "circle", stroke: { width: 0, color: "#000000" }, polygon: { nb_sides: 5 }, image: { src: "img/github.svg", width: 100, height: 100 } },
-                opacity: { value: 0.5, random: false, anim: { enable: false, speed: 1, opacity_min: 0.1, sync: false } },
-                size: { value: 3, random: true, anim: { enable: false, speed: 40, size_min: 0.1, sync: false } },
-                line_linked: { enable: true, distance: 150, color: "#ffffff", opacity: 0.4, width: 1 },
-                move: { enable: true, speed: 6, direction: "none", random: false, straight: false, out_mode: "out", bounce: false, attract: { enable: false, rotateX: 600, rotateY: 1200 } }
+
+    const modalContent = `
+        <div class="daily-bonus-container">
+            <div class="bonus-icon">🎁</div>
+            <h2>Ежедневный буст</h2>
+            <p>Получайте $SWITCH за ежедневный логин,<br>не пропуская ни одного</p>
+            <div class="days-grid">
+                ${daysHtml}
+            </div>
+            <button id="claimDailyBonus" class="claim-button" ${currentDay > 10 ? 'disabled' : ''}>
+                ${currentDay > 10 ? 'Возвращайтесь завтра' : 'Получить бонус'}
+            </button>
+        </div>
+    `;
+
+    showModal(modalContent);
+    document.getElementById('claimDailyBonus').addEventListener('click', claimDailyBonus);
+}
+
+async function sendMessageToBot(message) {
+    try {
+        const response = await fetch('/send-message', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
             },
-            interactivity: {
-                detect_on: "canvas",
-                events: { onhover: { enable: true, mode: "repulse" }, onclick: { enable: true, mode: "push" }, resize: true },
-                modes: { grab: { distance: 400, line_linked: { opacity: 1 } }, bubble: { distance: 400, size: 40, duration: 2, opacity: 8, speed: 3 }, repulse: { distance: 200, duration: 0.4 }, push: { particles_nb: 4 }, remove: { particles_nb: 2 } }
-            },
-            retina_detect: true
+            body: JSON.stringify({ message }),
         });
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        const result = await response.json();
+        console.log(result.message);
+    } catch (error) {
+        console.error('Error sending message to bot:', error);
     }
-    
-    // Вызов функции инициализации частиц после загрузки DOM
-    document.addEventListener('DOMContentLoaded', () => {
-        console.log('Initializing particles');
-        initParticles();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOMContentLoaded event fired');
+    initGame();
+    document.body.addEventListener('click', (event) => {
+        if (event.target.closest('#miningContainer')) {
+            handleManualMining(event);
+        }
     });
     
-    console.log('Telegram Web App data:', tg.initDataUnsafe);
-    
-    tg.expand();
+    const tabButtons = document.querySelectorAll('.tab-button');
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            const tab = button.getAttribute('data-tab');
+            loadTabContent(tab);
+        });
+    });
+});
+
+setInterval(() => {
+    updateMining();
+}, 1000);
+
+setInterval(() => {
+    saveGame();
+}, 5000);
+
+window.addEventListener('beforeunload', () => {
+    saveGame();
+});
+
+function initParticles() {
+    particlesJS("particles-js", {
+        particles: {
+            number: { value: 120, density: { enable: true, value_area: 800 } },
+            color: { value: "#8774e1" },
+            shape: { type: "circle", stroke: { width: 0, color: "#000000" }, polygon: { nb_sides: 5 } },
+            opacity: { value: 0.7, random: false, anim: { enable: true, speed: 1, opacity_min: 0.1, sync: false } },
+            size: { value: 3, random: true, anim: { enable: true, speed: 2, size_min: 0.1, sync: false } },
+            line_linked: { enable: true, distance: 150, color: "#8774e1", opacity: 0.5, width: 1 },
+            move: { enable: true, speed: 4, direction: "none", random: true, straight: false, out_mode: "out", bounce: false, attract: { enable: false, rotateX: 600, rotateY: 1200 } }
+        },
+        interactivity: {
+            detect_on: "canvas",
+            events: { onhover: { enable: true, mode: "repulse" }, onclick: { enable: true, mode: "push" }, resize: true },
+            modes: { grab: { distance: 400, line_linked: { opacity: 1 } }, bubble: { distance: 400, size: 40, duration: 2, opacity: 8, speed: 3 }, repulse: { distance: 200, duration: 0.4 }, push: { particles_nb: 4 }, remove: { particles_nb: 2 } }
+        },
+        retina_detect: true
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('Initializing particles');
+    initParticles();
+});
+
+console.log('Telegram Web App data:', tg.initDataUnsafe);
+
+tg.expand();
