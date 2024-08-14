@@ -79,6 +79,7 @@ app.get('/api/game/:userId', async (req, res) => {
     } else {
       const newUser = {
         id: userId,
+        username: req.query.username, // Получаем username из query параметра
         current_mining: 0,
         balance: 0,
         last_claim_time: Date.now(),
@@ -90,9 +91,9 @@ app.get('/api/game/:userId', async (req, res) => {
         referrals: []
       };
       await pool.query(`
-        INSERT INTO users (id, current_mining, balance, last_claim_time, last_login_time, mining_rate, subscribed_channels, daily_bonus_day, last_daily_bonus_time, referrals)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-      `, [newUser.id, newUser.current_mining, newUser.balance, newUser.last_claim_time, newUser.last_login_time, newUser.mining_rate, JSON.stringify(newUser.subscribed_channels), newUser.daily_bonus_day, newUser.last_daily_bonus_time, JSON.stringify(newUser.referrals)]);
+        INSERT INTO users (id, username, current_mining, balance, last_claim_time, last_login_time, mining_rate, subscribed_channels, daily_bonus_day, last_daily_bonus_time, referrals)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      `, [newUser.id, newUser.username, newUser.current_mining, newUser.balance, newUser.last_claim_time, newUser.last_login_time, newUser.mining_rate, JSON.stringify(newUser.subscribed_channels), newUser.daily_bonus_day, newUser.last_daily_bonus_time, JSON.stringify(newUser.referrals)]);
       res.json(newUser);
     }
   } catch (error) {
@@ -122,7 +123,7 @@ app.post('/api/game/:userId', async (req, res) => {
 
 app.get('/api/leaderboard', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM users ORDER BY balance DESC LIMIT 10');
+    const result = await pool.query('SELECT id, username, balance FROM users ORDER BY balance DESC LIMIT 10');
     res.json(result.rows);
   } catch (error) {
     console.error('Error fetching leaderboard:', error);
