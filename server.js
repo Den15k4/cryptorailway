@@ -1,14 +1,21 @@
 const express = require('express');
 const path = require('path');
 const axios = require('axios');
+const { Pool } = require('pg');
 require('dotenv').config();
-const { loadGame, saveGame, updateLeaderboard, getLeaderboard } = require('./db');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '/')));
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL,
+  ssl: {
+    rejectUnauthorized: false
+  }
+});
 
 const TELEGRAM_API = `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`;
 const WEBHOOK_URL = `${process.env.RAILWAY_STATIC_URL}/webhook/${process.env.TELEGRAM_BOT_TOKEN}`;
@@ -56,32 +63,31 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-app.post('/send-message', async (req, res) => {
-  const { message } = req.body;
-  const chatId = req.body.chatId || process.env.ADMIN_CHAT_ID;
-
-  try {
-    const response = await axios.post(`${TELEGRAM_API}/sendMessage`, {
-      chat_id: chatId,
-      text: message
-    });
-    console.log('Message sent:', response.data);
-    res.json({ success: true, message: 'Message sent successfully' });
-  } catch (error) {
-    console.error('Error sending message:', error.response ? error.response.data : error.message);
-    res.status(500).json({ success: false, message: 'Error sending message', error: error.response ? error.response.data : error.message });
-  }
-});
-
-app.get('/health', (req, res) => {
-  res.json({ status: 'OK', message: 'Server is running' });
-});
-
 app.get('/api/game/:userId', async (req, res) => {
   try {
     const userId = req.params.userId;
-    const gameData = await loadGame(userId);
-    res.json(gameData);
+    const result = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
+    if (result.rows.length > 0) {
+      res.json(result.rows[0]);
+    } else {
+      const newUser = {
+        id: userId,
+        current_mining: 0,
+        balance: 0,
+        last_claim_time: Date.now(),
+        last_login_time: Date.now(),
+        mining_rate: 0.001,
+        subscribed_channels: [],
+        daily_bonus_day: 0,
+        last_daily_bonus_time: 0,
+        referrals: []
+      };
+      await pool.query(`
+        INSERT INTO users (id, current_mining, balance, last_claim_time, last_login_time, mining_rate, subscribed_channels, daily_bonus_day, last_daily_bonus_time, referrals)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      `, [newUser.id, newUser.current_mining, newUser.balance, newUser.last_claim_time, newUser.last_login_time, newUser.mining_rate, JSON.stringify(newUser.subscribed_channels), newUser.daily_bonus_day, newUser.last_daily_bonus_time, JSON.stringify(newUser.referrals)]);
+      res.json(newUser);
+    }
   } catch (error) {
     console.error('Error loading game:', error);
     res.status(500).json({ error: 'Error loading game data' });
@@ -92,7 +98,14 @@ app.post('/api/game/:userId', async (req, res) => {
   try {
     const userId = req.params.userId;
     const gameData = req.body;
-    await saveGame(userId, gameData);
+    await pool.query(`
+      UPDATE users SET
+      current_mining = $1, balance = $2, last_claim_time = $3, last_login_time = $4,
+      mining_rate = $5, subscribed_channels = $6, daily_bonus_day = $7,
+      last_daily_bonus_time = $8, referrals = $9 WHERE id = $10
+    `, [gameData.current_mining, gameData.balance, gameData.last_claim_time, gameData.last_login_time,
+        gameData.mining_rate, JSON.stringify(gameData.subscribed_channels), gameData.daily_bonus_day,
+        gameData.last_daily_bonus_time, JSON.stringify(gameData.referrals), userId]);
     res.json({ success: true });
   } catch (error) {
     console.error('Error saving game:', error);
@@ -102,18 +115,60 @@ app.post('/api/game/:userId', async (req, res) => {
 
 app.get('/api/leaderboard', async (req, res) => {
   try {
-    const leaderboard = await getLeaderboard();
-    res.json(leaderboard);
+    const result = await pool.query('SELECT * FROM users ORDER BY balance DESC LIMIT 10');
+    res.json(result.rows);
   } catch (error) {
     console.error('Error fetching leaderboard:', error);
     res.status(500).json({ error: 'Error fetching leaderboard' });
   }
 });
 
+app.post('/api/claim/:userId', async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const { amount } = req.body;
+    await pool.query('UPDATE users SET balance = balance + $1, current_mining = 0, last_claim_time = $2 WHERE id = $3', [amount, Date.now(), userId]);
+    res.json({ success: true, amount });
+  } catch (error) {
+    console.error('Error claiming mining:', error);
+    res.status(500).json({ error: 'Error claiming mining' });
+  }
+});
+
+app.post('/api/daily-bonus/:userId', async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const result = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
+    if (result.rows.length > 0) {
+      const user = result.rows[0];
+      const now = Date.now();
+      const oneDayInMs = 24 * 60 * 60 * 1000;
+      if (now - user.last_daily_bonus_time > oneDayInMs) {
+        const newDailyBonusDay = (user.daily_bonus_day % 10) + 1;
+        const bonusAmount = [1, 1, 2, 3, 5, 8, 13, 21, 34, 55][newDailyBonusDay - 1];
+        await pool.query('UPDATE users SET balance = balance + $1, daily_bonus_day = $2, last_daily_bonus_time = $3 WHERE id = $4', [bonusAmount, newDailyBonusDay, now, userId]);
+        res.json({ success: true, bonusAmount, newDailyBonusDay });
+      } else {
+        res.status(400).json({ error: 'Daily bonus already claimed' });
+      }
+    } else {
+      res.status(404).json({ error: 'User not found' });
+    }
+  } catch (error) {
+    console.error('Error claiming daily bonus:', error);
+    res.status(500).json({ error: 'Error claiming daily bonus' });
+  }
+});
+
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).send('Something broke!');
+});
+
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
   console.log('Environment variables:');
+  console.log('DATABASE_URL:', process.env.DATABASE_URL);
   console.log('RAILWAY_STATIC_URL:', process.env.RAILWAY_STATIC_URL);
   console.log('TELEGRAM_BOT_TOKEN:', process.env.TELEGRAM_BOT_TOKEN ? 'Set' : 'Not set');
-  console.log('ADMIN_CHAT_ID:', process.env.ADMIN_CHAT_ID ? 'Set' : 'Not set');
 });
