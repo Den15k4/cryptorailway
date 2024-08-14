@@ -10,11 +10,18 @@ const port = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '/')));
 
+console.log('Attempting to connect to database with URL:', process.env.DATABASE_URL);
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL,
+  connectionString: process.env.DATABASE_URL,
   ssl: {
     rejectUnauthorized: false
   }
+});
+
+pool.on('error', (err) => {
+  console.error('Unexpected error on idle client', err);
+  process.exit(-1);
 });
 
 const TELEGRAM_API = `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`;
@@ -168,7 +175,17 @@ app.use((err, req, res, next) => {
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
   console.log('Environment variables:');
-  console.log('DATABASE_URL:', process.env.DATABASE_URL);
+  console.log('DATABASE_URL:', process.env.DATABASE_URL ? 'Set' : 'Not set');
   console.log('RAILWAY_STATIC_URL:', process.env.RAILWAY_STATIC_URL);
   console.log('TELEGRAM_BOT_TOKEN:', process.env.TELEGRAM_BOT_TOKEN ? 'Set' : 'Not set');
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  process.exit(1);
 });
