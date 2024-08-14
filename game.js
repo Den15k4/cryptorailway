@@ -224,13 +224,16 @@ async function showLeaderboardTab() {
         const response = await fetch('/api/leaderboard');
         if (response.ok) {
             const leaderboardData = await response.json();
+            console.log('Leaderboard data received:', leaderboardData);
             updateLeaderboardUI(leaderboardData);
         } else {
-            throw new Error('Failed to fetch leaderboard data');
+            const errorData = await response.json();
+            console.error('Failed to fetch leaderboard data:', errorData);
+            throw new Error(errorData.error || 'Failed to fetch leaderboard data');
         }
     } catch (error) {
         console.error('Error fetching leaderboard:', error);
-        document.getElementById('mainContent').innerHTML = '<p>Ошибка при загрузке таблицы лидеров</p>';
+        document.getElementById('mainContent').innerHTML = `<p>Ошибка при загрузке таблицы лидеров: ${error.message}</p>`;
     }
 }
 
@@ -626,13 +629,13 @@ window.addEventListener('beforeunload', () => {
 function initParticles() {
     particlesJS("particles-js", {
         particles: {
-            number: { value: 120, density: { enable: true, value_area: 800 } },
+            number: { value: 150, density: { enable: true, value_area: 800 } },
             color: { value: "#8774e1" },
             shape: { type: "circle", stroke: { width: 0, color: "#000000" }, polygon: { nb_sides: 5 } },
-            opacity: { value: 0.7, random: false, anim: { enable: true, speed: 1, opacity_min: 0.1, sync: false } },
-            size: { value: 3, random: true, anim: { enable: true, speed: 2, size_min: 0.1, sync: false } },
-            line_linked: { enable: true, distance: 150, color: "#8774e1", opacity: 0.5, width: 1 },
-            move: { enable: true, speed: 4, direction: "none", random: true, straight: false, out_mode: "out", bounce: false, attract: { enable: false, rotateX: 600, rotateY: 1200 } }
+            opacity: { value: 0.8, random: true, anim: { enable: true, speed: 1, opacity_min: 0.1, sync: false } },
+            size: { value: 5, random: true, anim: { enable: true, speed: 3, size_min: 0.1, sync: false } },
+            line_linked: { enable: true, distance: 150, color: "#8774e1", opacity: 0.6, width: 1.5 },
+            move: { enable: true, speed: 6, direction: "none", random: true, straight: false, out_mode: "out", bounce: false, attract: { enable: false, rotateX: 600, rotateY: 1200 } }
         },
         interactivity: {
             detect_on: "canvas",

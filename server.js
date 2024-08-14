@@ -123,11 +123,13 @@ app.post('/api/game/:userId', async (req, res) => {
 
 app.get('/api/leaderboard', async (req, res) => {
   try {
+    console.log('Fetching leaderboard data');
     const result = await pool.query('SELECT id, username, balance FROM users ORDER BY balance DESC LIMIT 10');
+    console.log('Leaderboard data:', result.rows);
     res.json(result.rows);
   } catch (error) {
     console.error('Error fetching leaderboard:', error);
-    res.status(500).json({ error: 'Error fetching leaderboard' });
+    res.status(500).json({ error: 'Error fetching leaderboard', details: error.message });
   }
 });
 
