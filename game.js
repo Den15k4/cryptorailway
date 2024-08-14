@@ -17,15 +17,19 @@ let saveGameTimeout;
 
 function updateLoadingProgress(progress) {
     const progressBar = document.getElementById('progress-bar');
-    progressBar.style.width = `${progress}%`;
+    if (progressBar) {
+        progressBar.style.width = `${progress}%`;
+    }
 }
 
 function hideLoadingScreen() {
     const loadingScreen = document.getElementById('loading-screen');
-    loadingScreen.style.opacity = '0';
-    setTimeout(() => {
-        loadingScreen.style.display = 'none';
-    }, 500);
+    if (loadingScreen) {
+        loadingScreen.style.opacity = '0';
+        setTimeout(() => {
+            loadingScreen.style.display = 'none';
+        }, 500);
+    }
 }
 
 async function initGame() {
@@ -229,13 +233,13 @@ async function showLeaderboardTab() {
                 content += `
                     <tr>
                         <td>${index + 1}</td>
-                        <td><img src="icon_button/telegram-icon.png" alt="Telegram" class="telegram-icon">${player.username}</td>
+                        <td><img src="icon_button/telegram-icon.png" alt="Telegram" class="telegram-icon">${player.username || 'Аноним'}</td>
                         <td>${formatNumber(player.balance)}</td>
                     </tr>
                 `;
             });
 
-            const playerRank = leaderboardData.findIndex(player => player.user_id === tg.initDataUnsafe.user.id) + 1;
+            const playerRank = leaderboardData.findIndex(player => player.id === tg.initDataUnsafe.user.id) + 1;
 
             content += `
                     </table>
@@ -600,6 +604,30 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+function updateLeaderboardUI(leaderboardData) {
+    const leaderboardElement = document.getElementById('leaderboard');
+    if (leaderboardElement) {
+        let content = '<table><tr><th>Место</th><th>Ник</th><th>Счет</th></tr>';
+        leaderboardData.forEach((player, index) => {
+            content += `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td><img src="icon_button/telegram-icon.png" alt="Telegram" class="telegram-icon">${player.username || 'Аноним'}</td>
+                    <td>${formatNumber(player.balance)}</td>
+                </tr>
+            `;
+        });
+        content += '</table>';
+        leaderboardElement.innerHTML = content;
+
+        const playerRank = leaderboardData.findIndex(player => player.id === tg.initDataUnsafe.user.id) + 1;
+        const rankElement = document.querySelector('p:contains("Ваше место:")');
+        if (rankElement) {
+            rankElement.textContent = `Ваше место: ${playerRank || 'N/A'}`;
+        }
+    }
+}
+
 setInterval(() => {
     updateMining();
 }, 1000);
@@ -607,5 +635,28 @@ setInterval(() => {
 setInterval(() => {
     saveGame();
 }, 5000);
+
+window.addEventListener('beforeunload', () => {
+    saveGame();
+});
+
+// Инициализация частиц
+particlesJS("particles-js", {
+    particles: {
+        number: { value: 80, density: { enable: true, value_area: 800 } },
+        color: { value: "#ffffff" },
+        shape: { type: "circle", stroke: { width: 0, color: "#000000" }, polygon: { nb_sides: 5 }, image: { src: "img/github.svg", width: 100, height: 100 } },
+        opacity: { value: 0.5, random: false, anim: { enable: false, speed: 1, opacity_min: 0.1, sync: false } },
+        size: { value: 3, random: true, anim: { enable: false, speed: 40, size_min: 0.1, sync: false } },
+        line_linked: { enable: true, distance: 150, color: "#ffffff", opacity: 0.4, width: 1 },
+        move: { enable: true, speed: 6, direction: "none", random: false, straight: false, out_mode: "out", bounce: false, attract: { enable: false, rotateX: 600, rotateY: 1200 } }
+    },
+    interactivity: {
+        detect_on: "canvas",
+        events: { onhover: { enable: true, mode: "repulse" }, onclick: { enable: true, mode: "push" }, resize: true },
+        modes: { grab: { distance: 400, line_linked: { opacity: 1 } }, bubble: { distance: 400, size: 40, duration: 2, opacity: 8, speed: 3 }, repulse: { distance: 200, duration: 0.4 }, push: { particles_nb: 4 }, remove: { particles_nb: 2 } }
+    },
+    retina_detect: true
+});
 
 tg.expand();
