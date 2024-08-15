@@ -16,6 +16,13 @@ let game = {
 let saveGameTimeout;
 let currentTab = 'main';
 
+function updateLoadingProgress(progress) {
+    const progressBar = document.getElementById('progress');
+    if (progressBar) {
+        progressBar.style.width = `${progress}%`;
+    }
+}
+
 function showLoadingScreen() {
     document.getElementById('loading-screen').style.display = 'flex';
     document.getElementById('app').style.display = 'none';
@@ -24,13 +31,6 @@ function showLoadingScreen() {
 function hideLoadingScreen() {
     document.getElementById('loading-screen').style.display = 'none';
     document.getElementById('app').style.display = 'block';
-}
-
-function updateLoadingProgress(progress) {
-    const progressBar = document.getElementById('progress');
-    if (progressBar) {
-        progressBar.style.width = `${progress}%`;
-    }
 }
 
 async function initGame() {
@@ -58,25 +58,23 @@ async function initGame() {
     }
 }
 
-// Добавьте эту функцию для повторной попытки инициализации
-function retryInitGame() {
-    console.log('Retrying game initialization...');
-    initGame();
+function initUI() {
+    showMainTab();
+    updateUI();
+    initTabButtons();
 }
 
-// Обновите обработчик события DOMContentLoaded
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOMContentLoaded event fired');
-    if (isMobileDevice()) {
-        initGame().catch(error => {
-            console.error('Failed to initialize game:', error);
-            showNotification('Не удалось загрузить игру. Нажмите, чтобы повторить попытку.');
-            document.body.addEventListener('click', retryInitGame, { once: true });
+function initTabButtons() {
+    const tabButtons = document.querySelectorAll('.tab-button');
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            const tab = button.getAttribute('data-tab');
+            loadTabContent(tab);
         });
-    } else {
-        showQRCode();
-    }
-});
+    });
+}
 
 function formatNumber(num) {
     if (num === null || isNaN(num)) {
@@ -102,7 +100,7 @@ async function loadGame() {
             
             const now = Date.now();
             const offlineTime = now - game.lastLoginTime;
-            const maxOfflineTime = 4 * 60 * 60 * 1000; // 4 hours
+            const maxOfflineTime = 4 * 60 * 60 * 1000;
             const effectiveOfflineTime = Math.min(offlineTime, maxOfflineTime);
             
             game.currentMining += (game.miningRate * effectiveOfflineTime) / 1000;
@@ -110,7 +108,7 @@ async function loadGame() {
             game.lastClaimTime = now;
 
             updateUI();
-            await saveGame(); // Сохраняем обновленные данные
+            await saveGame();
         } else {
             console.error('Failed to load game data. Status:', response.status);
             const errorText = await response.text();
@@ -119,7 +117,7 @@ async function loadGame() {
         }
     } catch (error) {
         console.error('Error loading game:', error);
-        throw error; // Перебрасываем ошибку, чтобы она была обработана в initGame
+        throw error;
     }
 }
 
@@ -145,36 +143,20 @@ async function saveGame() {
     }
 }
 
-async function updateLeaderboardUI(leaderboardData) {
-    let content = `
-        <h2>Топ игроков</h2>
-        <div id="leaderboard">
-            <table>
-                <tr><th>Место</th><th>Ник</th><th>Счет</th></tr>
-    `;
-
-    leaderboardData.forEach((player, index) => {
-        content += `
-            <tr>
-                <td>${index + 1}</td>
-                <td><img src="icon_button/telegram-icon.png" alt="Telegram" class="telegram-icon">${player.username || 'Аноним'}</td>
-                <td>${formatNumber(player.balance)}</td>
-            </tr>
-        `;
-    });
-
-    content += `
-            </table>
-        </div>
-    `;
-
-    // Получаем полный список лидеров для определения места пользователя
-    const fullLeaderboard = await fetch('/api/full-leaderboard').then(res => res.json());
-    const playerRank = fullLeaderboard.findIndex(player => player.id === tg.initDataUnsafe.user.id) + 1;
-    const displayRank = playerRank > 0 ? (playerRank > 100 ? '100+' : playerRank) : 'N/A';
-    content += `<p>Ваше место: ${displayRank}</p>`;
-
-    document.getElementById('mainContent').innerHTML = content;
+async function updateLeaderboard() {
+    if (currentTab === 'leaderboard') {
+        try {
+            const response = await fetch('/api/leaderboard');
+            if (response.ok) {
+                const leaderboardData = await response.json();
+                updateLeaderboardUI(leaderboardData);
+            } else {
+                console.error('Failed to fetch leaderboard data');
+            }
+        } catch (error) {
+            console.error('Error updating leaderboard:', error);
+        }
+    }
 }
 
 function updateMining() {
@@ -299,8 +281,8 @@ async function updateLeaderboardUI(leaderboardData) {
     // Получаем полный список лидеров для определения места пользователя
     const fullLeaderboard = await fetch('/api/full-leaderboard').then(res => res.json());
     const playerRank = fullLeaderboard.findIndex(player => player.id === tg.initDataUnsafe.user.id) + 1;
-    const displayRank = playerRank > 100 ? '100+' : playerRank;
-    content += `<p>Ваше место: ${displayRank || 'N/A'}</p>`;
+    const displayRank = playerRank > 0 ? (playerRank > 100 ? '100+' : playerRank) : 'N/A';
+    content += `<p>Ваше место: ${displayRank}</p>`;
 
     document.getElementById('mainContent').innerHTML = content;
 }
@@ -413,6 +395,7 @@ function showClaimEffect() {
         { scale: 1.1, opacity: 0.8, duration: 0.3, yoyo: true, repeat: 1 }
     );
 }
+
 function showNotification(message) {
     const notification = document.getElementById('notification');
     notification.textContent = message;
@@ -492,26 +475,14 @@ function inviteFriend() {
     const referralLink = `https://t.me/paradox_token_bot/Paradox?start=ref_${tg.initDataUnsafe.user.id}`;
     const message = `Приглашаю тебя в новый мир майнинга: ${referralLink}`;
     
-    if (tg.showPopup) {
-        tg.showPopup({
-            title: 'Пригласить друга',
-            message: 'Скопируйте ссылку и отправьте другу',
-            buttons: [
-                {text: 'Скопировать ссылку', type: 'default'}
-            ]
-        }, function(buttonId) {
-            if (buttonId === 0) {
-                navigator.clipboard.writeText(message).then(() => {
-                    showNotification('Ссылка скопирована в буфер обмена');
-                }).catch(err => {
-                    console.error('Ошибка копирования: ', err);
-                    showNotification('Не удалось скопировать ссылку. Попробуйте еще раз.');
-                });
-            }
-        });
+    if (tg.isExpanded) {
+        tg.sendData(JSON.stringify({
+            action: 'invite_friend',
+            message: message
+        }));
     } else {
         navigator.clipboard.writeText(message).then(() => {
-            showNotification('Ссылка скопирована в буфер обмена');
+            showNotification('Реферальная ссылка скопирована в буфер обмена');
         }).catch(err => {
             console.error('Ошибка копирования: ', err);
             showNotification('Не удалось скопировать ссылку. Попробуйте еще раз.');
@@ -672,22 +643,6 @@ async function sendMessageToBot(message) {
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOMContentLoaded event fired');
-    if (isMobileDevice()) {
-        initGame();
-        document.body.addEventListener('click', (event) => {
-            if (event.target.closest('#miningContainer')) {
-                handleManualMining(event);
-            }
-        });
-        
-        initTabButtons();
-    } else {
-        showQRCode();
-    }
-});
-
 function isMobileDevice() {
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 }
@@ -707,17 +662,24 @@ function showQRCode() {
     new QRCode(document.getElementById("qrcode"), appLink);
 }
 
-function initTabButtons() {
-    const tabButtons = document.querySelectorAll('.tab-button');
-    tabButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            tabButtons.forEach(btn => btn.classList.remove('active'));
-            button.classList.add('active');
-            const tab = button.getAttribute('data-tab');
-            loadTabContent(tab);
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOMContentLoaded event fired');
+    if (isMobileDevice()) {
+        initGame().catch(error => {
+            console.error('Failed to initialize game:', error);
+            showNotification('Произошла ошибка при загрузке игры. Пожалуйста, обновите страницу.');
         });
-    });
-}
+        document.body.addEventListener('click', (event) => {
+            if (event.target.closest('#miningContainer')) {
+                handleManualMining(event);
+            }
+        });
+        
+        initTabButtons();
+    } else {
+        showQRCode();
+    }
+});
 
 setInterval(() => {
     updateMining();
@@ -729,31 +691,6 @@ setInterval(() => {
 
 window.addEventListener('beforeunload', () => {
     saveGame();
-});
-
-function initParticles() {
-    particlesJS("particles-js", {
-        particles: {
-            number: { value: 150, density: { enable: true, value_area: 800 } },
-            color: { value: "#8774e1" },
-            shape: { type: "circle", stroke: { width: 0, color: "#000000" }, polygon: { nb_sides: 5 } },
-            opacity: { value: 0.8, random: true, anim: { enable: true, speed: 1, opacity_min: 0.1, sync: false } },
-            size: { value: 5, random: true, anim: { enable: true, speed: 3, size_min: 0.1, sync: false } },
-            line_linked: { enable: true, distance: 150, color: "#8774e1", opacity: 0.6, width: 1.5 },
-            move: { enable: true, speed: 6, direction: "none", random: true, straight: false, out_mode: "out", bounce: false, attract: { enable: false, rotateX: 600, rotateY: 1200 } }
-        },
-        interactivity: {
-            detect_on: "canvas",
-            events: { onhover: { enable: true, mode: "repulse" }, onclick: { enable: true, mode: "push" }, resize: true },
-            modes: { grab: { distance: 400, line_linked: { opacity: 1 } }, bubble: { distance: 400, size: 40, duration: 2, opacity: 8, speed: 3 }, repulse: { distance: 200, duration: 0.4 }, push: { particles_nb: 4 }, remove: { particles_nb: 2 } }
-        },
-        retina_detect: true
-    });
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('Initializing particles');
-    initParticles();
 });
 
 console.log('Telegram Web App data:', tg.initDataUnsafe);
