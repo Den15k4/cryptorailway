@@ -51,6 +51,7 @@ async function initGame() {
         updateLoadingProgress(100);
         console.log('Game initialization complete.');
         setTimeout(hideLoadingScreen, 500);
+        initParticles();
     } catch (error) {
         console.error('Error during game initialization:', error);
         showNotification('Произошла ошибка при загрузке игры. Пожалуйста, обновите страницу.');
@@ -107,8 +108,7 @@ async function loadGame() {
             game.lastLoginTime = now;
 
             updateUI();
-            initParticles(); // Инициализация анимации фона
-            await saveGame(); // Сохраняем обновленные данные
+            await saveGame();
         } else {
             console.error('Failed to load game data. Status:', response.status);
             const errorText = await response.text();
@@ -117,7 +117,7 @@ async function loadGame() {
         }
     } catch (error) {
         console.error('Error loading game:', error);
-        showNotification('Ошибка при загрузке данных. Попробуйте перезагрузить страницу.');
+        throw error;
     }
 }
 
@@ -432,6 +432,7 @@ async function checkSubscription(channelIndex) {
                 game.miningRate += 0.003;
                 showNotification("Ускоритель активирован! +0.003 к скорости добычи");
                 updateUI();
+                await saveGame();
             } else {
                 showNotification("Вы уже активировали этот ускоритель.");
             }
@@ -469,6 +470,7 @@ async function claimDailyBonus() {
     }
     hideModal();
 }
+
 function inviteFriend() {
     const referralLink = `https://t.me/paradox_token_bot/Paradox?start=ref_${tg.initDataUnsafe.user.id}`;
     const message = `Приглашаю тебя в новый мир майнинга: ${referralLink}`;
@@ -641,42 +643,39 @@ async function sendMessageToBot(message) {
     }
 }
 
-function isMobileDevice() {
-    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-}
-
-function showQRCode() {
-    const appLink = 'https://t.me/paradox_token_bot/Paradox';
-    const qrCodeContainer = document.createElement('div');
-    qrCodeContainer.id = 'qrCodeContainer';
-    qrCodeContainer.innerHTML = `
-        <h2>Приложение доступно только на мобильных устройствах</h2>
-        <p>Отсканируйте QR-код, чтобы открыть приложение на вашем телефоне:</p>
-        <div id="qrcode"></div>
-    `;
-    document.body.innerHTML = '';
-    document.body.appendChild(qrCodeContainer);
-
-    new QRCode(document.getElementById("qrcode"), appLink);
+function initParticles() {
+    particlesJS("particles-js", {
+        particles: {
+            number: { value: 150, density: { enable: true, value_area: 800 } },
+            color: { value: "#8774e1" },
+            shape: { type: "circle", stroke: { width: 0, color: "#000000" }, polygon: { nb_sides: 5 } },
+            opacity: { value: 0.8, random: true, anim: { enable: true, speed: 1, opacity_min: 0.1, sync: false } },
+            size: { value: 5, random: true, anim: { enable: true, speed: 3, size_min: 0.1, sync: false } },
+            line_linked: { enable: true, distance: 150, color: "#8774e1", opacity: 0.6, width: 1.5 },
+            move: { enable: true, speed: 6, direction: "none", random: true, straight: false, out_mode: "out", bounce: false, attract: { enable: false, rotateX: 600, rotateY: 1200 } }
+        },
+        interactivity: {
+            detect_on: "canvas",
+            events: { onhover: { enable: true, mode: "repulse" }, onclick: { enable: true, mode: "push" }, resize: true },
+            modes: { grab: { distance: 400, line_linked: { opacity: 1 } }, bubble: { distance: 400, size: 40, duration: 2, opacity: 8, speed: 3 }, repulse: { distance: 200, duration: 0.4 }, push: { particles_nb: 4 }, remove: { particles_nb: 2 } }
+        },
+        retina_detect: true
+    });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log('DOMContentLoaded event fired');
-    if (isMobileDevice()) {
-        initGame().catch(error => {
-            console.error('Failed to initialize game:', error);
-            showNotification('Произошла ошибка при загрузке игры. Пожалуйста, обновите страницу.');
-        });
-        document.body.addEventListener('click', (event) => {
-            if (event.target.closest('#miningContainer')) {
-                handleManualMining(event);
-            }
-        });
-        
-        initTabButtons();
-    } else {
-        showQRCode();
-    }
+    initGame().catch(error => {
+        console.error('Failed to initialize game:', error);
+        showNotification('Произошла ошибка при загрузке игры. Пожалуйста, обновите страницу.');
+    });
+    document.body.addEventListener('click', (event) => {
+        if (event.target.closest('#miningContainer')) {
+            handleManualMining(event);
+        }
+    });
+    
+    initTabButtons();
 });
 
 setInterval(() => {

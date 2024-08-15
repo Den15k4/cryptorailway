@@ -46,7 +46,6 @@ app.get('/set-webhook', async (req, res) => {
     });
   }
 });
-
 app.post(`/webhook/${process.env.TELEGRAM_BOT_TOKEN}`, async (req, res) => {
   try {
     const { message } = req.body;

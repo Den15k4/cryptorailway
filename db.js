@@ -60,4 +60,9 @@ async function getLeaderboard() {
   return result.rows;
 }
 
-module.exports = { loadGame, saveGame, updateLeaderboard, getLeaderboard };
+async function getFullLeaderboard() {
+  const result = await query('SELECT * FROM leaderboard ORDER BY balance DESC');
+  return result.rows;
+}
+
+module.exports = { loadGame, saveGame, updateLeaderboard, getLeaderboard, getFullLeaderboard };
