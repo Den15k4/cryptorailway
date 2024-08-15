@@ -105,10 +105,10 @@ async function loadGame() {
             
             game.currentMining += (game.miningRate * effectiveOfflineTime) / 1000;
             game.lastLoginTime = now;
-            game.lastClaimTime = now;
 
             updateUI();
-            await saveGame();
+            initParticles(); // Инициализация анимации фона
+            await saveGame(); // Сохраняем обновленные данные
         } else {
             console.error('Failed to load game data. Status:', response.status);
             const errorText = await response.text();
@@ -117,7 +117,7 @@ async function loadGame() {
         }
     } catch (error) {
         console.error('Error loading game:', error);
-        throw error;
+        showNotification('Ошибка при загрузке данных. Попробуйте перезагрузить страницу.');
     }
 }
 
@@ -278,7 +278,6 @@ async function updateLeaderboardUI(leaderboardData) {
         </div>
     `;
 
-    // Получаем полный список лидеров для определения места пользователя
     const fullLeaderboard = await fetch('/api/full-leaderboard').then(res => res.json());
     const playerRank = fullLeaderboard.findIndex(player => player.id === tg.initDataUnsafe.user.id) + 1;
     const displayRank = playerRank > 0 ? (playerRank > 100 ? '100+' : playerRank) : 'N/A';
@@ -470,7 +469,6 @@ async function claimDailyBonus() {
     }
     hideModal();
 }
-
 function inviteFriend() {
     const referralLink = `https://t.me/paradox_token_bot/Paradox?start=ref_${tg.initDataUnsafe.user.id}`;
     const message = `Приглашаю тебя в новый мир майнинга: ${referralLink}`;
