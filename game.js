@@ -17,7 +17,7 @@ let saveGameTimeout;
 let currentTab = 'main';
 
 function updateLoadingProgress(progress) {
-    const progressBar = document.getElementById('progress-bar');
+    const progressBar = document.getElementById('progress');
     if (progressBar) {
         progressBar.style.width = `${progress}%`;
     }
@@ -88,13 +88,15 @@ async function loadGame() {
             
             const now = Date.now();
             const offlineTime = now - game.lastLoginTime;
-            const maxOfflineTime = 4 * 60 * 60 * 1000;
-            if (offlineTime > maxOfflineTime) {
-                const excessTime = offlineTime - maxOfflineTime;
-                game.lastClaimTime += excessTime;
-            }
+            const maxOfflineTime = 4 * 60 * 60 * 1000; // 4 hours
+            const effectiveOfflineTime = Math.min(offlineTime, maxOfflineTime);
+            
+            game.currentMining += (game.miningRate * effectiveOfflineTime) / 1000;
             game.lastLoginTime = now;
+            game.lastClaimTime = now;
+
             updateUI();
+            await saveGame(); // Сохраняем обновленные данные
         } else {
             console.error('Failed to load game data');
             showNotification('Ошибка при загрузке данных. Попробуйте перезагрузить страницу.');

@@ -147,26 +147,26 @@ app.post('/api/claim/:userId', async (req, res) => {
 
 app.post('/api/daily-bonus/:userId', async (req, res) => {
   try {
-    const userId = req.params.userId;
-    const result = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
-    if (result.rows.length > 0) {
-      const user = result.rows[0];
-      const now = Date.now();
-      const oneDayInMs = 24 * 60 * 60 * 1000;
-      if (now - user.last_daily_bonus_time > oneDayInMs) {
-        const newDailyBonusDay = (user.daily_bonus_day % 10) + 1;
-        const bonusAmount = [1, 1, 2, 3, 5, 8, 13, 21, 34, 55][newDailyBonusDay - 1];
-        await pool.query('UPDATE users SET balance = balance + $1, daily_bonus_day = $2, last_daily_bonus_time = $3 WHERE id = $4', [bonusAmount, newDailyBonusDay, now, userId]);
-        res.json({ success: true, bonusAmount, newDailyBonusDay });
+      const userId = req.params.userId;
+      const result = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
+      if (result.rows.length > 0) {
+          const user = result.rows[0];
+          const now = Date.now();
+          const oneDayInMs = 24 * 60 * 60 * 1000;
+          if (now - user.last_daily_bonus_time >= oneDayInMs) {
+              const newDailyBonusDay = (user.daily_bonus_day % 10) + 1;
+              const bonusAmount = [1, 1, 2, 3, 5, 8, 13, 21, 34, 55][newDailyBonusDay - 1];
+              await pool.query('UPDATE users SET balance = balance + $1, daily_bonus_day = $2, last_daily_bonus_time = $3 WHERE id = $4', [bonusAmount, newDailyBonusDay, now, userId]);
+              res.json({ success: true, bonusAmount, newDailyBonusDay });
+          } else {
+              res.status(400).json({ error: 'Daily bonus already claimed', timeLeft: oneDayInMs - (now - user.last_daily_bonus_time) });
+          }
       } else {
-        res.status(400).json({ error: 'Daily bonus already claimed' });
+          res.status(404).json({ error: 'User not found' });
       }
-    } else {
-      res.status(404).json({ error: 'User not found' });
-    }
   } catch (error) {
-    console.error('Error claiming daily bonus:', error);
-    res.status(500).json({ error: 'Error claiming daily bonus' });
+      console.error('Error claiming daily bonus:', error);
+      res.status(500).json({ error: 'Error claiming daily bonus' });
   }
 });
 
