@@ -69,25 +69,35 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-app.post('/api/game/:userId', async (req, res) => {
+app.get('/api/game/:userId', async (req, res) => {
   try {
     const userId = req.params.userId;
-    const gameData = req.body;
-    console.log('Attempting to save game data for user:', userId);
-    console.log('Game data:', gameData);
-    await pool.query(`
-      UPDATE users SET
-      current_mining = $1, balance = $2, last_claim_time = $3, last_login_time = $4,
-      mining_rate = $5, subscribed_channels = $6, daily_bonus_day = $7,
-      last_daily_bonus_time = $8, referrals = $9 WHERE id = $10
-    `, [gameData.current_mining, gameData.balance, gameData.last_claim_time, gameData.last_login_time,
-        gameData.mining_rate, JSON.stringify(gameData.subscribed_channels), gameData.daily_bonus_day,
-        gameData.last_daily_bonus_time, JSON.stringify(gameData.referrals), userId]);
-    console.log('Game data saved successfully');
-    res.json({ success: true });
+    const result = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
+    if (result.rows.length > 0) {
+      res.json(result.rows[0]);
+    } else {
+      const newUser = {
+        id: userId,
+        username: req.query.username,
+        current_mining: 0,
+        balance: 0,
+        last_claim_time: Date.now(),
+        last_login_time: Date.now(),
+        mining_rate: 0.001,
+        subscribed_channels: [],
+        daily_bonus_day: 0,
+        last_daily_bonus_time: 0,
+        referrals: []
+      };
+      await pool.query(`
+        INSERT INTO users (id, username, current_mining, balance, last_claim_time, last_login_time, mining_rate, subscribed_channels, daily_bonus_day, last_daily_bonus_time, referrals)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      `, [newUser.id, newUser.username, newUser.current_mining, newUser.balance, newUser.last_claim_time, newUser.last_login_time, newUser.mining_rate, JSON.stringify(newUser.subscribed_channels), newUser.daily_bonus_day, newUser.last_daily_bonus_time, JSON.stringify(newUser.referrals)]);
+      res.json(newUser);
+    }
   } catch (error) {
-    console.error('Error saving game:', error);
-    res.status(500).json({ error: 'Error saving game data', details: error.message });
+    console.error('Error loading game:', error);
+    res.status(500).json({ error: 'Error loading game data' });
   }
 });
 
