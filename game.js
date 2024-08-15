@@ -34,36 +34,49 @@ function updateLoadingProgress(progress) {
 }
 
 async function initGame() {
-    showLoadingScreen();
-    updateLoadingProgress(10);
-    await loadGame();
-    updateLoadingProgress(40);
-    await updateLeaderboard();
-    updateLoadingProgress(70);
-    initUI();
-    updateLoadingProgress(90);
-    checkReferral();
-    updateLoadingProgress(100);
-    setTimeout(hideLoadingScreen, 500);
+    try {
+        showLoadingScreen();
+        updateLoadingProgress(10);
+        console.log('Loading game data...');
+        await loadGame();
+        updateLoadingProgress(40);
+        console.log('Updating leaderboard...');
+        await updateLeaderboard();
+        updateLoadingProgress(70);
+        console.log('Initializing UI...');
+        initUI();
+        updateLoadingProgress(90);
+        console.log('Checking referral...');
+        checkReferral();
+        updateLoadingProgress(100);
+        console.log('Game initialization complete.');
+        setTimeout(hideLoadingScreen, 500);
+    } catch (error) {
+        console.error('Error during game initialization:', error);
+        showNotification('Произошла ошибка при загрузке игры. Пожалуйста, обновите страницу.');
+        hideLoadingScreen();
+    }
 }
 
-function initUI() {
-    showMainTab();
-    updateUI();
-    initTabButtons();
+// Добавьте эту функцию для повторной попытки инициализации
+function retryInitGame() {
+    console.log('Retrying game initialization...');
+    initGame();
 }
 
-function initTabButtons() {
-    const tabButtons = document.querySelectorAll('.tab-button');
-    tabButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            tabButtons.forEach(btn => btn.classList.remove('active'));
-            button.classList.add('active');
-            const tab = button.getAttribute('data-tab');
-            loadTabContent(tab);
+// Обновите обработчик события DOMContentLoaded
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOMContentLoaded event fired');
+    if (isMobileDevice()) {
+        initGame().catch(error => {
+            console.error('Failed to initialize game:', error);
+            showNotification('Не удалось загрузить игру. Нажмите, чтобы повторить попытку.');
+            document.body.addEventListener('click', retryInitGame, { once: true });
         });
-    });
-}
+    } else {
+        showQRCode();
+    }
+});
 
 function formatNumber(num) {
     if (num === null || isNaN(num)) {
@@ -99,12 +112,14 @@ async function loadGame() {
             updateUI();
             await saveGame(); // Сохраняем обновленные данные
         } else {
-            console.error('Failed to load game data');
-            showNotification('Ошибка при загрузке данных. Попробуйте перезагрузить страницу.');
+            console.error('Failed to load game data. Status:', response.status);
+            const errorText = await response.text();
+            console.error('Error details:', errorText);
+            throw new Error('Failed to load game data');
         }
     } catch (error) {
         console.error('Error loading game:', error);
-        showNotification('Ошибка при загрузке данных. Попробуйте перезагрузить страницу.');
+        throw error; // Перебрасываем ошибку, чтобы она была обработана в initGame
     }
 }
 
