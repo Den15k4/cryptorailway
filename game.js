@@ -89,6 +89,7 @@ function formatNumber(num) {
     return num.toFixed(3);
 }
 
+
 async function loadGame() {
     try {
         console.log('Loading game data for user:', tg.initDataUnsafe.user.id);
@@ -101,7 +102,7 @@ async function loadGame() {
             
             const now = Date.now();
             const offlineTime = now - game.lastLoginTime;
-            const maxOfflineTime = 4 * 60 * 60 * 1000;
+            const maxOfflineTime = 4 * 60 * 60 * 1000; // 4 часа в миллисекундах
             const effectiveOfflineTime = Math.min(offlineTime, maxOfflineTime);
             
             game.currentMining += (game.miningRate * effectiveOfflineTime) / 1000;
@@ -140,6 +141,8 @@ async function saveGame() {
     } catch (error) {
         console.error('Error saving game:', error);
         showNotification('Не удалось сохранить прогресс. Попробуйте еще раз позже.');
+        // Попытка повторного сохранения через 5 секунд
+        setTimeout(() => saveGame(), 5000);
     }
 }
 
@@ -450,57 +453,57 @@ async function claimDailyBonus() {
     const now = Date.now();
     const oneDayInMs = 24 * 60 * 60 * 1000;
     if (!game.lastDailyBonusTime || now - game.lastDailyBonusTime >= oneDayInMs) {
-      try {
-        const response = await fetch(`/api/daily-bonus/${tg.initDataUnsafe.user.id}`, {
-          method: 'POST'
-        });
-        const data = await response.json();
-        if (response.ok) {
-          game.balance += data.bonusAmount;
-          game.dailyBonusDay = data.newDailyBonusDay;
-          game.lastDailyBonusTime = now;
-          
-          showNotification(`Вы получили ежедневный бонус: ${data.bonusAmount} монет!`);
-          updateUI();
-          await saveGame();
-          await updateLeaderboard();
-        } else {
-          showNotification(data.error || "Не удалось получить ежедневный бонус. Попробуйте позже.");
+        try {
+            const response = await fetch(`/api/daily-bonus/${tg.initDataUnsafe.user.id}`, {
+                method: 'POST'
+            });
+            const data = await response.json();
+            if (response.ok) {
+                game.balance += data.bonusAmount;
+                game.dailyBonusDay = data.newDailyBonusDay;
+                game.lastDailyBonusTime = now;
+                
+                showNotification(`Вы получили ежедневный бонус: ${data.bonusAmount} монет!`);
+                updateUI();
+                await saveGame();
+                await updateLeaderboard();
+            } else {
+                showNotification(data.error || "Не удалось получить ежедневный бонус. Попробуйте позже.");
+            }
+        } catch (error) {
+            console.error('Error claiming daily bonus:', error);
+            showNotification("Произошла ошибка при получении ежедневного бонуса. Попробуйте позже.");
         }
-      } catch (error) {
-        console.error('Error claiming daily bonus:', error);
-        showNotification("Произошла ошибка при получении ежедневного бонуса. Попробуйте позже.");
-      }
     } else {
-      const timeLeft = oneDayInMs - (now - game.lastDailyBonusTime);
-      const hoursLeft = Math.floor(timeLeft / (60 * 60 * 1000));
-      const minutesLeft = Math.floor((timeLeft % (60 * 60 * 1000)) / (60 * 1000));
-      showNotification(`Вы уже получили сегодняшний бонус. Следующий бонус будет доступен через ${hoursLeft} ч ${minutesLeft} мин.`);
+        const timeLeft = oneDayInMs - (now - game.lastDailyBonusTime);
+        const hoursLeft = Math.floor(timeLeft / (60 * 60 * 1000));
+        const minutesLeft = Math.floor((timeLeft % (60 * 60 * 1000)) / (60 * 1000));
+        showNotification(`Вы уже получили сегодняшний бонус. Следующий бонус будет доступен через ${hoursLeft} ч ${minutesLeft} мин.`);
     }
     hideModal();
-  }
+}
 
-  function inviteFriend() {
-    const referralLink = `https://t.me/paradox_token_bot/Paradox?start=ref_${tg.initDataUnsafe.user.id}`;
+function inviteFriend() {
+    const referralLink = `https://t.me/paradox_token_bot?start=ref_${tg.initDataUnsafe.user.id}`;
     const message = `Приглашаю тебя в новый мир майнинга: ${referralLink}`;
     
     console.log('Trying to invite friend. tg object:', tg);
     if (tg.isExpanded) {
-      console.log('Using Telegram Mini App API to share');
-      tg.sendData(JSON.stringify({
-        action: 'invite_friend',
-        message: message
-      }));
+        console.log('Using Telegram Mini App API to share');
+        tg.sendData(JSON.stringify({
+            action: 'invite_friend',
+            message: message
+        }));
     } else {
-      console.log('Falling back to clipboard copy');
-      navigator.clipboard.writeText(message).then(() => {
-        showNotification('Реферальная ссылка скопирована в буфер обмена');
-      }).catch(err => {
-        console.error('Ошибка копирования: ', err);
-        showNotification('Не удалось скопировать ссылку. Попробуйте еще раз.');
-      });
+        console.log('Falling back to clipboard copy');
+        navigator.clipboard.writeText(message).then(() => {
+            showNotification('Реферальная ссылка скопирована в буфер обмена');
+        }).catch(err => {
+            console.error('Ошибка копирования: ', err);
+            showNotification('Не удалось скопировать ссылку. Попробуйте еще раз.');
+        });
     }
-  }
+}
 
 function checkReferral() {
     const urlParams = new URLSearchParams(window.location.search);
