@@ -16,6 +16,16 @@ let game = {
 let saveGameTimeout;
 let currentTab = 'main';
 
+function showLoadingScreen() {
+    document.getElementById('loading-screen').style.display = 'flex';
+    document.getElementById('app').style.display = 'none';
+}
+
+function hideLoadingScreen() {
+    document.getElementById('loading-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+}
+
 function updateLoadingProgress(progress) {
     const progressBar = document.getElementById('progress');
     if (progressBar) {
@@ -23,17 +33,8 @@ function updateLoadingProgress(progress) {
     }
 }
 
-function hideLoadingScreen() {
-    const loadingScreen = document.getElementById('loading-screen');
-    if (loadingScreen) {
-        loadingScreen.style.opacity = '0';
-        setTimeout(() => {
-            loadingScreen.style.display = 'none';
-        }, 500);
-    }
-}
-
 async function initGame() {
+    showLoadingScreen();
     updateLoadingProgress(10);
     await loadGame();
     updateLoadingProgress(40);
@@ -238,7 +239,7 @@ async function showLeaderboardTab() {
     }
 }
 
-function updateLeaderboardUI(leaderboardData) {
+async function updateLeaderboardUI(leaderboardData) {
     let content = `
         <h2>Топ игроков</h2>
         <div id="leaderboard">
@@ -261,8 +262,11 @@ function updateLeaderboardUI(leaderboardData) {
         </div>
     `;
 
-    const playerRank = leaderboardData.findIndex(player => player.id === tg.initDataUnsafe.user.id) + 1;
-    content += `<p>Ваше место: ${playerRank || 'N/A'}</p>`;
+    // Получаем полный список лидеров для определения места пользователя
+    const fullLeaderboard = await fetch('/api/full-leaderboard').then(res => res.json());
+    const playerRank = fullLeaderboard.findIndex(player => player.id === tg.initDataUnsafe.user.id) + 1;
+    const displayRank = playerRank > 100 ? '100+' : playerRank;
+    content += `<p>Ваше место: ${displayRank || 'N/A'}</p>`;
 
     document.getElementById('mainContent').innerHTML = content;
 }
@@ -287,16 +291,33 @@ function showDailyTab() {
                 <button id="submitVideoButton" class="task-button">Отправить</button>
             </div>
         </div>
+        <div id="referralsList">
+            <h3>Приглашенные друзья:</h3>
+            <ul id="referralsListItems"></ul>
+        </div>
     `;
 
     document.getElementById('mainContent').innerHTML = content;
     attachDailyTasksEventListeners();
+    updateReferralsList();
 }
 
 function attachDailyTasksEventListeners() {
     document.getElementById('dailyBonusButton').addEventListener('click', showDailyBonusModal);
     document.getElementById('inviteFriendButton').addEventListener('click', inviteFriend);
     document.getElementById('submitVideoButton').addEventListener('click', submitVideo);
+}
+
+function updateReferralsList() {
+    const referralsListItems = document.getElementById('referralsListItems');
+    if (referralsListItems) {
+        referralsListItems.innerHTML = '';
+        game.referrals.forEach(referral => {
+            const li = document.createElement('li');
+            li.textContent = `${referral.username} - ${formatNumber(referral.minedAmount)} монет`;
+            referralsListItems.appendChild(li);
+        });
+    }
 }
 
 function loadTabContent(tab) {
@@ -342,6 +363,7 @@ async function claim() {
             showNotification("Крипто успешно собрано!");
             sendMessageToBot(`Пользователь ${tg.initDataUnsafe.user.username} собрал ${formatNumber(data.amount)} монет!`);
             await updateLeaderboard();
+            tg.HapticFeedback.impactOccurred('medium');
         } else {
             throw new Error('Failed to claim mining');
         }
@@ -357,7 +379,6 @@ function showClaimEffect() {
         { scale: 1.1, opacity: 0.8, duration: 0.3, yoyo: true, repeat: 1 }
     );
 }
-
 function showNotification(message) {
     const notification = document.getElementById('notification');
     notification.textContent = message;
@@ -421,10 +442,11 @@ async function claimDailyBonus() {
             
             showNotification(`Вы получили ежедневный бонус: ${data.bonusAmount} монет!`);
             updateUI();
+            await saveGame(); // Сохраняем обновленные данные игры
             await updateLeaderboard();
         } else {
             const errorData = await response.json();
-            showNotification(errorData.message || "Не удалось получить ежедневный бонус. Попробуйте позже.");
+            showNotification(errorData.error || "Не удалось получить ежедневный бонус. Попробуйте позже.");
         }
     } catch (error) {
         console.error('Error claiming daily bonus:', error);
@@ -434,12 +456,11 @@ async function claimDailyBonus() {
 }
 
 function inviteFriend() {
-    const referralLink = `https://t.me/your_bot?start=ref_${tg.initDataUnsafe.user.id}`;
-    navigator.clipboard.writeText(referralLink).then(() => {
-        showNotification("Реферальная ссылка скопирована в буфер обмена!");
-    }).catch(err => {
-        console.error('Ошибка копирования: ', err);
-        showNotification("Не удалось скопировать ссылку. Попробуйте еще раз.");
+    const referralLink = `https://t.me/paradox_token_bot/Paradox?start=ref_${tg.initDataUnsafe.user.id}`;
+    const message = `Приглашаю тебя в новый мир майнинга: ${referralLink}`;
+    
+    tg.ShareTargetPicker.open({
+        text: message
     });
 }
 
@@ -598,15 +619,38 @@ async function sendMessageToBot(message) {
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log('DOMContentLoaded event fired');
-    initGame();
-    document.body.addEventListener('click', (event) => {
-        if (event.target.closest('#miningContainer')) {
-            handleManualMining(event);
-        }
-    });
-    
-    initTabButtons();
+    if (isMobileDevice()) {
+        initGame();
+        document.body.addEventListener('click', (event) => {
+            if (event.target.closest('#miningContainer')) {
+                handleManualMining(event);
+            }
+        });
+        
+        initTabButtons();
+    } else {
+        showQRCode();
+    }
 });
+
+function isMobileDevice() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
+
+function showQRCode() {
+    const appLink = 'https://t.me/paradox_token_bot/Paradox';
+    const qrCodeContainer = document.createElement('div');
+    qrCodeContainer.id = 'qrCodeContainer';
+    qrCodeContainer.innerHTML = `
+        <h2>Приложение доступно только на мобильных устройствах</h2>
+        <p>Отсканируйте QR-код, чтобы открыть приложение на вашем телефоне:</p>
+        <div id="qrcode"></div>
+    `;
+    document.body.innerHTML = '';
+    document.body.appendChild(qrCodeContainer);
+
+    new QRCode(document.getElementById("qrcode"), appLink);
+}
 
 function initTabButtons() {
     const tabButtons = document.querySelectorAll('.tab-button');

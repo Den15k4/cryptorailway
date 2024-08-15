@@ -79,7 +79,7 @@ app.get('/api/game/:userId', async (req, res) => {
     } else {
       const newUser = {
         id: userId,
-        username: req.query.username, // Получаем username из query параметра
+        username: req.query.username,
         current_mining: 0,
         balance: 0,
         last_claim_time: Date.now(),
@@ -133,6 +133,16 @@ app.get('/api/leaderboard', async (req, res) => {
   }
 });
 
+app.get('/api/full-leaderboard', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT id, username, balance FROM users ORDER BY balance DESC');
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching full leaderboard:', error);
+    res.status(500).json({ error: 'Error fetching full leaderboard' });
+  }
+});
+
 app.post('/api/claim/:userId', async (req, res) => {
   try {
     const userId = req.params.userId;
@@ -147,26 +157,56 @@ app.post('/api/claim/:userId', async (req, res) => {
 
 app.post('/api/daily-bonus/:userId', async (req, res) => {
   try {
-      const userId = req.params.userId;
-      const result = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
-      if (result.rows.length > 0) {
-          const user = result.rows[0];
-          const now = Date.now();
-          const oneDayInMs = 24 * 60 * 60 * 1000;
-          if (now - user.last_daily_bonus_time >= oneDayInMs) {
-              const newDailyBonusDay = (user.daily_bonus_day % 10) + 1;
-              const bonusAmount = [1, 1, 2, 3, 5, 8, 13, 21, 34, 55][newDailyBonusDay - 1];
-              await pool.query('UPDATE users SET balance = balance + $1, daily_bonus_day = $2, last_daily_bonus_time = $3 WHERE id = $4', [bonusAmount, newDailyBonusDay, now, userId]);
-              res.json({ success: true, bonusAmount, newDailyBonusDay });
-          } else {
-              res.status(400).json({ error: 'Daily bonus already claimed', timeLeft: oneDayInMs - (now - user.last_daily_bonus_time) });
-          }
+    const userId = req.params.userId;
+    const result = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
+    if (result.rows.length > 0) {
+      const user = result.rows[0];
+      const now = Date.now();
+      const oneDayInMs = 24 * 60 * 60 * 1000;
+      if (!user.last_daily_bonus_time || now - user.last_daily_bonus_time >= oneDayInMs) {
+        const newDailyBonusDay = (user.daily_bonus_day % 10) + 1;
+        const bonusAmount = [1, 1, 2, 3, 5, 8, 13, 21, 34, 55][newDailyBonusDay - 1];
+        await pool.query('UPDATE users SET balance = balance + $1, daily_bonus_day = $2, last_daily_bonus_time = $3 WHERE id = $4', [bonusAmount, newDailyBonusDay, now, userId]);
+        res.json({ success: true, bonusAmount, newDailyBonusDay });
       } else {
-          res.status(404).json({ error: 'User not found' });
+        const timeLeft = oneDayInMs - (now - user.last_daily_bonus_time);
+        res.status(400).json({ error: 'Daily bonus already claimed', timeLeft });
       }
+    } else {
+      res.status(404).json({ error: 'User not found' });
+    }
   } catch (error) {
-      console.error('Error claiming daily bonus:', error);
-      res.status(500).json({ error: 'Error claiming daily bonus' });
+    console.error('Error claiming daily bonus:', error);
+    res.status(500).json({ error: 'Error claiming daily bonus' });
+  }
+});
+
+app.post('/api/referral/:userId/:referralCode', async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const referralCode = req.params.referralCode;
+    const referrerResult = await pool.query('SELECT * FROM users WHERE id = $1', [referralCode]);
+    if (referrerResult.rows.length > 0) {
+      const referrer = referrerResult.rows[0];
+      const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
+      if (userResult.rows.length > 0) {
+        const user = userResult.rows[0];
+        if (!referrer.referrals.some(r => r.id === userId)) {
+          referrer.referrals.push({ id: userId, username: user.username, minedAmount: 0 });
+          await pool.query('UPDATE users SET referrals = $1 WHERE id = $2', [JSON.stringify(referrer.referrals), referralCode]);
+          res.json({ success: true });
+        } else {
+          res.status(400).json({ error: 'User already referred' });
+        }
+      } else {
+        res.status(404).json({ error: 'User not found' });
+      }
+    } else {
+      res.status(404).json({ error: 'Referrer not found' });
+    }
+  } catch (error) {
+    console.error('Error processing referral:', error);
+    res.status(500).json({ error: 'Error processing referral' });
   }
 });
 
