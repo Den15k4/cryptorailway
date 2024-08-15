@@ -51,7 +51,7 @@ async function initGame() {
         updateLoadingProgress(100);
         console.log('Game initialization complete.');
         setTimeout(hideLoadingScreen, 500);
-        initParticles(); // Добавьте эту строку
+        initParticles();
     } catch (error) {
         console.error('Error during game initialization:', error);
         showNotification('Произошла ошибка при загрузке игры. Пожалуйста, обновите страницу.');
@@ -89,7 +89,6 @@ function formatNumber(num) {
     return num.toFixed(3);
 }
 
-
 async function loadGame() {
     try {
         console.log('Loading game data for user:', tg.initDataUnsafe.user.id);
@@ -107,6 +106,8 @@ async function loadGame() {
             
             game.currentMining += (game.miningRate * effectiveOfflineTime) / 1000;
             game.lastLoginTime = now;
+
+            console.log('Current mining after offline calculation:', game.currentMining);
 
             updateUI();
             await saveGame();
@@ -280,10 +281,20 @@ async function updateLeaderboardUI(leaderboardData) {
         </div>
     `;
 
-    const fullLeaderboard = await fetch('/api/full-leaderboard').then(res => res.json());
-    const playerRank = fullLeaderboard.findIndex(player => player.id === tg.initDataUnsafe.user.id) + 1;
-    const displayRank = playerRank > 0 ? (playerRank > 100 ? '100+' : playerRank) : 'N/A';
-    content += `<p>Ваше место: ${displayRank}</p>`;
+    try {
+        const fullLeaderboardResponse = await fetch('/api/full-leaderboard');
+        if (fullLeaderboardResponse.ok) {
+            const fullLeaderboard = await fullLeaderboardResponse.json();
+            const playerRank = fullLeaderboard.findIndex(player => player.id === tg.initDataUnsafe.user.id) + 1;
+            const displayRank = playerRank > 0 ? (playerRank > 100 ? '100+' : playerRank) : 'N/A';
+            content += `<p>Ваше место: ${displayRank}</p>`;
+        } else {
+            throw new Error('Failed to fetch full leaderboard');
+        }
+    } catch (error) {
+        console.error('Error fetching full leaderboard:', error);
+        content += `<p>Ваше место: N/A</p>`;
+    }
 
     document.getElementById('mainContent').innerHTML = content;
 }
@@ -483,16 +494,17 @@ async function claimDailyBonus() {
 }
 
 function inviteFriend() {
-    const referralLink = `https://t.me/paradox_token_bot?start=ref_${tg.initDataUnsafe.user.id}`;
+    const referralLink = `https://t.me/paradox_token_bot/Paradox?start=ref_${tg.initDataUnsafe.user.id}`;
     const message = `Приглашаю тебя в новый мир майнинга: ${referralLink}`;
     
     console.log('Trying to invite friend. tg object:', tg);
-    if (tg.isExpanded) {
+    if (tg.initDataUnsafe.user.id) {
         console.log('Using Telegram Mini App API to share');
         tg.sendData(JSON.stringify({
             action: 'invite_friend',
             message: message
         }));
+        showNotification('Приглашение отправлено через Telegram');
     } else {
         console.log('Falling back to clipboard copy');
         navigator.clipboard.writeText(message).then(() => {
