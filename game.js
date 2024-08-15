@@ -51,7 +51,7 @@ async function initGame() {
         updateLoadingProgress(100);
         console.log('Game initialization complete.');
         setTimeout(hideLoadingScreen, 500);
-        initParticles();
+        initParticles(); // Добавьте эту строку
     } catch (error) {
         console.error('Error during game initialization:', error);
         showNotification('Произошла ошибка при загрузке игры. Пожалуйста, обновите страницу.');
@@ -102,7 +102,7 @@ async function loadGame() {
             
             const now = Date.now();
             const offlineTime = now - game.lastLoginTime;
-            const maxOfflineTime = 4 * 60 * 60 * 1000; // 4 часа в миллисекундах
+            const maxOfflineTime = 4 * 60 * 60 * 1000;
             const effectiveOfflineTime = Math.min(offlineTime, maxOfflineTime);
             
             game.currentMining += (game.miningRate * effectiveOfflineTime) / 1000;
@@ -118,7 +118,7 @@ async function loadGame() {
         }
     } catch (error) {
         console.error('Error loading game:', error);
-        throw error;
+        showNotification('Произошла ошибка при загрузке игры. Пожалуйста, попробуйте еще раз.');
     }
 }
 
@@ -140,8 +140,7 @@ async function saveGame() {
         console.log('Game saved successfully');
     } catch (error) {
         console.error('Error saving game:', error);
-        showNotification('Не удалось сохранить прогресс. Попробуйте еще раз позже.');
-        // Попытка повторного сохранения через 5 секунд
+        showNotification('Не удалось сохранить прогресс. Автоматическая попытка через 5 секунд...');
         setTimeout(() => saveGame(), 5000);
     }
 }
