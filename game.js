@@ -118,29 +118,48 @@ async function saveGame() {
             body: JSON.stringify(game),
         });
         if (!response.ok) {
+            console.error('Failed to save game data. Status:', response.status);
+            const errorText = await response.text();
+            console.error('Error details:', errorText);
             throw new Error('Failed to save game data');
         }
-        await updateLeaderboard();
+        console.log('Game saved successfully');
     } catch (error) {
         console.error('Error saving game:', error);
-        showNotification('Не удалось сохранить прогресс. Проверьте подключение к интернету.');
+        showNotification('Не удалось сохранить прогресс. Попробуйте еще раз позже.');
     }
 }
 
-async function updateLeaderboard() {
-    if (currentTab === 'leaderboard') {
-        try {
-            const response = await fetch('/api/leaderboard');
-            if (response.ok) {
-                const leaderboardData = await response.json();
-                updateLeaderboardUI(leaderboardData);
-            } else {
-                console.error('Failed to fetch leaderboard data');
-            }
-        } catch (error) {
-            console.error('Error updating leaderboard:', error);
-        }
-    }
+async function updateLeaderboardUI(leaderboardData) {
+    let content = `
+        <h2>Топ игроков</h2>
+        <div id="leaderboard">
+            <table>
+                <tr><th>Место</th><th>Ник</th><th>Счет</th></tr>
+    `;
+
+    leaderboardData.forEach((player, index) => {
+        content += `
+            <tr>
+                <td>${index + 1}</td>
+                <td><img src="icon_button/telegram-icon.png" alt="Telegram" class="telegram-icon">${player.username || 'Аноним'}</td>
+                <td>${formatNumber(player.balance)}</td>
+            </tr>
+        `;
+    });
+
+    content += `
+            </table>
+        </div>
+    `;
+
+    // Получаем полный список лидеров для определения места пользователя
+    const fullLeaderboard = await fetch('/api/full-leaderboard').then(res => res.json());
+    const playerRank = fullLeaderboard.findIndex(player => player.id === tg.initDataUnsafe.user.id) + 1;
+    const displayRank = playerRank > 0 ? (playerRank > 100 ? '100+' : playerRank) : 'N/A';
+    content += `<p>Ваше место: ${displayRank}</p>`;
+
+    document.getElementById('mainContent').innerHTML = content;
 }
 
 function updateMining() {
@@ -434,19 +453,18 @@ async function claimDailyBonus() {
         const response = await fetch(`/api/daily-bonus/${tg.initDataUnsafe.user.id}`, {
             method: 'POST'
         });
+        const data = await response.json();
         if (response.ok) {
-            const data = await response.json();
             game.balance += data.bonusAmount;
             game.dailyBonusDay = data.newDailyBonusDay;
             game.lastDailyBonusTime = Date.now();
             
             showNotification(`Вы получили ежедневный бонус: ${data.bonusAmount} монет!`);
             updateUI();
-            await saveGame(); // Сохраняем обновленные данные игры
+            await saveGame();
             await updateLeaderboard();
         } else {
-            const errorData = await response.json();
-            showNotification(errorData.error || "Не удалось получить ежедневный бонус. Попробуйте позже.");
+            showNotification(data.error || "Не удалось получить ежедневный бонус. Попробуйте позже.");
         }
     } catch (error) {
         console.error('Error claiming daily bonus:', error);
@@ -459,9 +477,31 @@ function inviteFriend() {
     const referralLink = `https://t.me/paradox_token_bot/Paradox?start=ref_${tg.initDataUnsafe.user.id}`;
     const message = `Приглашаю тебя в новый мир майнинга: ${referralLink}`;
     
-    tg.ShareTargetPicker.open({
-        text: message
-    });
+    if (tg.showPopup) {
+        tg.showPopup({
+            title: 'Пригласить друга',
+            message: 'Скопируйте ссылку и отправьте другу',
+            buttons: [
+                {text: 'Скопировать ссылку', type: 'default'}
+            ]
+        }, function(buttonId) {
+            if (buttonId === 0) {
+                navigator.clipboard.writeText(message).then(() => {
+                    showNotification('Ссылка скопирована в буфер обмена');
+                }).catch(err => {
+                    console.error('Ошибка копирования: ', err);
+                    showNotification('Не удалось скопировать ссылку. Попробуйте еще раз.');
+                });
+            }
+        });
+    } else {
+        navigator.clipboard.writeText(message).then(() => {
+            showNotification('Ссылка скопирована в буфер обмена');
+        }).catch(err => {
+            console.error('Ошибка копирования: ', err);
+            showNotification('Не удалось скопировать ссылку. Попробуйте еще раз.');
+        });
+    }
 }
 
 function checkReferral() {
