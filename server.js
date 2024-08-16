@@ -122,10 +122,10 @@ app.post('/api/game/:userId', async (req, res) => {
       UPDATE users SET
       current_mining = $1, balance = $2, last_claim_time = $3, last_login_time = $4,
       mining_rate = $5, subscribed_channels = $6, daily_bonus_day = $7,
-      last_daily_bonus_time = $8, referrals = $9 WHERE id = $10
+      last_daily_bonus_time = $8, username = $9 WHERE id = $10
     `, [gameData.current_mining, gameData.balance, gameData.last_claim_time, gameData.last_login_time,
         gameData.mining_rate, JSON.stringify(gameData.subscribed_channels), gameData.daily_bonus_day,
-        gameData.last_daily_bonus_time, JSON.stringify(gameData.referrals), userId]);
+        gameData.last_daily_bonus_time, gameData.username, userId]);
     res.json({ success: true });
   } catch (error) {
     console.error('Error saving game:', error);

@@ -116,12 +116,24 @@ async function loadGame() {
 
 async function saveGame() {
     try {
+        const gameData = {
+            current_mining: game.currentMining,
+            balance: game.balance,
+            last_claim_time: game.lastClaimTime,
+            last_login_time: game.lastLoginTime,
+            mining_rate: game.miningRate,
+            subscribed_channels: game.subscribedChannels,
+            daily_bonus_day: game.dailyBonusDay,
+            last_daily_bonus_time: game.lastDailyBonusTime,
+            username: tg.initDataUnsafe.user.username
+        };
+        
         const response = await fetch(`/api/game/${tg.initDataUnsafe.user.id}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(game),
+            body: JSON.stringify(gameData),
         });
         if (!response.ok) {
             throw new Error('Failed to save game data');
@@ -473,7 +485,7 @@ async function claimDailyBonus() {
 }
 
 function inviteFriend() {
-    const referralLink = `https://t.me/paradox_token_bot/Paradox?start=ref_${tg.initDataUnsafe.user.id}`;
+    const referralLink = `https://t.me/paradox_token_bot?start=ref_${tg.initDataUnsafe.user.id}`;
     const message = `Приглашаю тебя в новый мир майнинга: ${referralLink}`;
     
     console.log('Trying to invite friend. tg object:', tg);
@@ -488,11 +500,8 @@ function inviteFriend() {
             ]
         }, (buttonId) => {
             if (buttonId === 'share') {
-                tg.sendData(JSON.stringify({
-                    action: 'invite_friend',
-                    message: message
-                }));
-                showNotification('Приглашение отправлено через Telegram');
+                tg.openTelegramLink(referralLink);
+                showNotification('Ссылка для приглашения открыта в Telegram');
             }
         });
     } else {
