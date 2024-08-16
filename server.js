@@ -24,6 +24,15 @@ pool.on('error', (err) => {
   process.exit(-1);
 });
 
+// Проверка подключения к БД
+pool.query('SELECT NOW()', (err, res) => {
+  if (err) {
+    console.error('Error connecting to the database', err);
+  } else {
+    console.log('Successfully connected to the database');
+  }
+});
+
 const TELEGRAM_API = `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`;
 const WEBHOOK_URL = `${process.env.RAILWAY_STATIC_URL}/webhook/${process.env.TELEGRAM_BOT_TOKEN}`;
 
@@ -305,7 +314,7 @@ app.post('/api/submit-video/:userId', authenticateUser, async (req, res) => {
       const now = Date.now();
       const oneDayInMs = 24 * 60 * 60 * 1000;
       if (!user.last_video_submission || now - user.last_video_submission >= oneDayInMs) {
-        const reward = 5; // Example reward amount
+        const reward = 5; // Пример награды за видео
         await pool.query('UPDATE users SET balance = balance + $1, last_video_submission = $2 WHERE id = $3', [reward, now, userId]);
         res.json({ success: true, reward });
       } else {

@@ -463,28 +463,26 @@ async function checkSubscription(channelIndex) {
 
 async function claimDailyBonus() {
     try {
-        const response = await fetch(`/api/daily-bonus/${tg.initDataUnsafe.user.id}`, {
-            method: 'POST'
-        });
-        const data = await response.json();
-        if (response.ok) {
-            game.balance += data.bonusAmount;
-            game.dailyBonusDay = data.newDailyBonusDay;
-            game.lastDailyBonusTime = Date.now();
-            
-            showNotification(`Вы получили ежедневный бонус: ${data.bonusAmount} монет!`);
-            updateUI();
-            await saveGame();
-            await updateLeaderboard();
-        } else {
-            showNotification(data.error || "Не удалось получить ежедневный бонус. Попробуйте позже.");
-        }
+      const response = await fetch(`/api/daily-bonus/${tg.initDataUnsafe.user.id}`, {
+        method: 'POST'
+      });
+      const data = await response.json();
+      if (response.ok) {
+        game.balance += data.bonusAmount;
+        game.dailyBonusDay = data.newDailyBonusDay;
+        game.lastDailyBonusTime = Date.now();
+        
+        showNotification(`Вы получили ежедневный бонус: ${data.bonusAmount} монет!`);
+        updateUI();
+        await saveGame();
+      } else {
+        showNotification(data.error || "Не удалось получить ежедневный бонус. Попробуйте позже.");
+      }
     } catch (error) {
-        console.error('Error claiming daily bonus:', error);
-        showNotification("Произошла ошибка при получении ежедневного бонуса. Попробуйте позже.");
+      console.error('Error claiming daily bonus:', error);
+      showNotification("Произошла ошибка при получении ежедневного бонуса. Попробуйте позже.");
     }
-    hideModal();
-}
+  }
 
 function inviteFriend() {
     const referralLink = `https://t.me/paradox_token_bot?start=ref_${tg.initDataUnsafe.user.id}`;
