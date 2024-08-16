@@ -102,14 +102,10 @@ async function loadGame() {
             const now = Date.now();
             const offlineTime = now - game.lastLoginTime;
             const maxOfflineTime = 4 * 60 * 60 * 1000;
-            if (offlineTime > maxOfflineTime) {
-                const excessTime = offlineTime - maxOfflineTime;
-                game.lastClaimTime += excessTime;
-            }
-            game.lastLoginTime = now;
-            
             const effectiveOfflineTime = Math.min(offlineTime, maxOfflineTime);
+            
             game.currentMining += (game.miningRate * effectiveOfflineTime) / 1000;
+            game.lastLoginTime = now;
 
             console.log('Current mining after offline calculation:', game.currentMining);
 
@@ -491,11 +487,22 @@ function inviteFriend() {
     console.log('Trying to invite friend. tg object:', tg);
     if (tg.initDataUnsafe.user.id) {
         console.log('Using Telegram Mini App API to share');
-        tg.sendData(JSON.stringify({
-            action: 'invite_friend',
-            message: message
-        }));
-        showNotification('Приглашение отправлено через Telegram');
+        tg.showPopup({
+            title: 'Пригласить друга',
+            message: 'Хотите отправить приглашение другу?',
+            buttons: [
+                {id: 'share', type: 'default', text: 'Поделиться'},
+                {id: 'cancel', type: 'cancel', text: 'Отмена'}
+            ]
+        }, (buttonId) => {
+            if (buttonId === 'share') {
+                tg.sendData(JSON.stringify({
+                    action: 'invite_friend',
+                    message: message
+                }));
+                showNotification('Приглашение отправлено через Telegram');
+            }
+        });
     } else {
         console.log('Falling back to clipboard copy');
         navigator.clipboard.writeText(message).then(() => {
