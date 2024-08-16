@@ -21,6 +21,17 @@ async function loadGame(userId) {
   const result = await query('SELECT * FROM users WHERE id = $1', [userId]);
   if (result.rows.length > 0) {
     const user = result.rows[0];
+    const now = Date.now();
+    const offlineTime = now - user.last_login_time;
+    const maxOfflineTime = 4 * 60 * 60 * 1000;
+    const effectiveOfflineTime = Math.min(offlineTime, maxOfflineTime);
+    
+    user.current_mining = user.total_mined + (user.mining_rate * effectiveOfflineTime) / 1000;
+    user.last_login_time = now;
+
+    await query('UPDATE users SET current_mining = $1, last_login_time = $2 WHERE id = $3', 
+      [user.current_mining, user.last_login_time, userId]);
+
     return {
       ...user,
       subscribedChannels: JSON.parse(user.subscribed_channels),
@@ -29,26 +40,27 @@ async function loadGame(userId) {
   } else {
     const newUser = {
       id: userId,
-      currentMining: 0,
+      current_mining: 0,
+      total_mined: 0,
       balance: 0,
-      lastClaimTime: Date.now(),
-      lastLoginTime: Date.now(),
-      miningRate: 0.001,
-      subscribedChannels: [],
-      dailyBonusDay: 0,
-      lastDailyBonusTime: 0,
+      last_claim_time: Date.now(),
+      last_login_time: Date.now(),
+      mining_rate: 0.001,
+      subscribed_channels: [],
+      daily_bonus_day: 0,
+      last_daily_bonus_time: 0,
       referrals: [],
-      lastVideoSubmission: 0
+      last_video_submission: 0
     };
-    await query('INSERT INTO users (id, current_mining, balance, last_claim_time, last_login_time, mining_rate, subscribed_channels, daily_bonus_day, last_daily_bonus_time, referrals, last_video_submission) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)', 
-      [newUser.id, newUser.currentMining, newUser.balance, newUser.lastClaimTime, newUser.lastLoginTime, newUser.miningRate, JSON.stringify(newUser.subscribedChannels), newUser.dailyBonusDay, newUser.lastDailyBonusTime, JSON.stringify(newUser.referrals), newUser.lastVideoSubmission]);
+    await query('INSERT INTO users (id, current_mining, total_mined, balance, last_claim_time, last_login_time, mining_rate, subscribed_channels, daily_bonus_day, last_daily_bonus_time, referrals, last_video_submission) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)', 
+      [newUser.id, newUser.current_mining, newUser.total_mined, newUser.balance, newUser.last_claim_time, newUser.last_login_time, newUser.mining_rate, JSON.stringify(newUser.subscribed_channels), newUser.daily_bonus_day, newUser.last_daily_bonus_time, JSON.stringify(newUser.referrals), newUser.last_video_submission]);
     return newUser;
   }
 }
 
 async function saveGame(userId, gameData) {
-  await query('UPDATE users SET current_mining = $1, balance = $2, last_claim_time = $3, last_login_time = $4, mining_rate = $5, subscribed_channels = $6, daily_bonus_day = $7, last_daily_bonus_time = $8, referrals = $9, last_video_submission = $10 WHERE id = $11',
-    [gameData.currentMining, gameData.balance, gameData.lastClaimTime, gameData.lastLoginTime, gameData.miningRate, JSON.stringify(gameData.subscribedChannels), gameData.dailyBonusDay, gameData.lastDailyBonusTime, JSON.stringify(gameData.referrals), gameData.lastVideoSubmission, userId]);
+  await query('UPDATE users SET current_mining = $1, total_mined = $1, balance = $2, last_claim_time = $3, last_login_time = $4, mining_rate = $5, subscribed_channels = $6, daily_bonus_day = $7, last_daily_bonus_time = $8, referrals = $9, last_video_submission = $10 WHERE id = $11',
+    [gameData.current_mining, gameData.balance, gameData.last_claim_time, gameData.last_login_time, gameData.mining_rate, JSON.stringify(gameData.subscribed_channels), gameData.daily_bonus_day, gameData.last_daily_bonus_time, JSON.stringify(gameData.referrals), gameData.last_video_submission, userId]);
 }
 
 async function updateLeaderboard(userId, username, balance) {
@@ -90,5 +102,5 @@ module.exports = {
   getLeaderboard, 
   getPlayerRank,
   addReferral,
-  query // Экспортируем query для использования в других модулях при необходимости
+  query
 };

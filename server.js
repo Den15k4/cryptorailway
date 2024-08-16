@@ -2,6 +2,7 @@ const express = require('express');
 const path = require('path');
 const axios = require('axios');
 const { Pool } = require('pg');
+const winston = require('winston');
 require('dotenv').config();
 
 const app = express();
@@ -10,7 +11,24 @@ const port = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '/')));
 
-console.log('Attempting to connect to database with URL:', process.env.DATABASE_URL);
+// Настройка логгера
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.json(),
+  defaultMeta: { service: 'user-service' },
+  transports: [
+    new winston.transports.File({ filename: 'error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'combined.log' })
+  ]
+});
+
+if (process.env.NODE_ENV !== 'production') {
+  logger.add(new winston.transports.Console({
+    format: winston.format.simple()
+  }));
+}
+
+logger.info('Attempting to connect to database with URL:', process.env.DATABASE_URL);
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -20,16 +38,16 @@ const pool = new Pool({
 });
 
 pool.on('error', (err) => {
-  console.error('Unexpected error on idle client', err);
+  logger.error('Unexpected error on idle client', err);
   process.exit(-1);
 });
 
 // Проверка подключения к БД
 pool.query('SELECT NOW()', (err, res) => {
   if (err) {
-    console.error('Error connecting to the database', err);
+    logger.error('Error connecting to the database', err);
   } else {
-    console.log('Successfully connected to the database');
+    logger.info('Successfully connected to the database');
   }
 });
 
@@ -38,16 +56,16 @@ const WEBHOOK_URL = `${process.env.RAILWAY_STATIC_URL}/webhook/${process.env.TEL
 
 app.get('/set-webhook', async (req, res) => {
   try {
-    console.log('Attempting to set webhook to:', WEBHOOK_URL);
+    logger.info('Attempting to set webhook to:', WEBHOOK_URL);
     const response = await axios.get(`${TELEGRAM_API}/setWebhook?url=${WEBHOOK_URL}`);
-    console.log('Webhook set response:', response.data);
+    logger.info('Webhook set response:', response.data);
     res.json({
       success: true,
       message: 'Webhook set successfully',
       data: response.data
     });
   } catch (error) {
-    console.error('Error setting webhook:', error.response ? error.response.data : error.message);
+    logger.error('Error setting webhook:', error.response ? error.response.data : error.message);
     res.status(500).json({
       success: false,
       message: 'Error setting webhook',
@@ -59,7 +77,7 @@ app.get('/set-webhook', async (req, res) => {
 app.post(`/webhook/${process.env.TELEGRAM_BOT_TOKEN}`, async (req, res) => {
   try {
     const { message } = req.body;
-    console.log('Received message:', message);
+    logger.info('Received message:', message);
     
     if (message && message.text === '/start') {
       await axios.post(`${TELEGRAM_API}/sendMessage`, {
@@ -75,7 +93,7 @@ app.post(`/webhook/${process.env.TELEGRAM_BOT_TOKEN}`, async (req, res) => {
     
     res.sendStatus(200);
   } catch (error) {
-    console.error('Error processing webhook:', error);
+    logger.error('Error processing webhook:', error);
     res.sendStatus(500);
   }
 });
@@ -104,7 +122,7 @@ app.get('/api/game/:userId', authenticateUser, async (req, res) => {
       const maxOfflineTime = 4 * 60 * 60 * 1000;
       const effectiveOfflineTime = Math.min(offlineTime, maxOfflineTime);
       
-      userData.current_mining += (userData.mining_rate * effectiveOfflineTime) / 1000;
+      userData.current_mining = userData.total_mined + (userData.mining_rate * effectiveOfflineTime) / 1000;
       userData.last_login_time = now;
 
       await pool.query('UPDATE users SET current_mining = $1, last_login_time = $2 WHERE id = $3', 
@@ -116,6 +134,7 @@ app.get('/api/game/:userId', authenticateUser, async (req, res) => {
         id: userId,
         username: req.query.username,
         current_mining: 0,
+        total_mined: 0,
         balance: 0,
         last_claim_time: Date.now(),
         last_login_time: Date.now(),
@@ -127,13 +146,13 @@ app.get('/api/game/:userId', authenticateUser, async (req, res) => {
         last_video_submission: 0
       };
       await pool.query(`
-        INSERT INTO users (id, username, current_mining, balance, last_claim_time, last_login_time, mining_rate, subscribed_channels, daily_bonus_day, last_daily_bonus_time, referrals, last_video_submission)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-      `, [newUser.id, newUser.username, newUser.current_mining, newUser.balance, newUser.last_claim_time, newUser.last_login_time, newUser.mining_rate, JSON.stringify(newUser.subscribed_channels), newUser.daily_bonus_day, newUser.last_daily_bonus_time, JSON.stringify(newUser.referrals), newUser.last_video_submission]);
+        INSERT INTO users (id, username, current_mining, total_mined, balance, last_claim_time, last_login_time, mining_rate, subscribed_channels, daily_bonus_day, last_daily_bonus_time, referrals, last_video_submission)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      `, [newUser.id, newUser.username, newUser.current_mining, newUser.total_mined, newUser.balance, newUser.last_claim_time, newUser.last_login_time, newUser.mining_rate, JSON.stringify(newUser.subscribed_channels), newUser.daily_bonus_day, newUser.last_daily_bonus_time, JSON.stringify(newUser.referrals), newUser.last_video_submission]);
       res.json(newUser);
     }
   } catch (error) {
-    console.error('Error loading game:', error);
+    logger.error('Error loading game:', error);
     res.status(500).json({ error: 'Error loading game data' });
   }
 });
@@ -144,15 +163,15 @@ app.post('/api/game/:userId', authenticateUser, async (req, res) => {
     const gameData = req.body;
     await pool.query(`
       UPDATE users SET
-      current_mining = $1, balance = $2, last_claim_time = $3, last_login_time = $4,
-      mining_rate = $5, subscribed_channels = $6, daily_bonus_day = $7,
-      last_daily_bonus_time = $8, username = $9, last_video_submission = $10 WHERE id = $11
-    `, [gameData.current_mining, gameData.balance, gameData.last_claim_time, gameData.last_login_time,
+      current_mining = $1, total_mined = $2, balance = $3, last_claim_time = $4, last_login_time = $5,
+      mining_rate = $6, subscribed_channels = $7, daily_bonus_day = $8,
+      last_daily_bonus_time = $9, username = $10, last_video_submission = $11 WHERE id = $12
+    `, [gameData.current_mining, gameData.total_mined, gameData.balance, gameData.last_claim_time, gameData.last_login_time,
         gameData.mining_rate, JSON.stringify(gameData.subscribed_channels), gameData.daily_bonus_day,
         gameData.last_daily_bonus_time, gameData.username, gameData.last_video_submission, userId]);
     res.json({ success: true });
   } catch (error) {
-    console.error('Error saving game:', error);
+    logger.error('Error saving game:', error);
     res.status(500).json({ error: 'Error saving game data' });
   }
 });
@@ -168,7 +187,7 @@ app.get('/api/game-state/:userId', authenticateUser, async (req, res) => {
       const maxOfflineTime = 4 * 60 * 60 * 1000;
       const effectiveOfflineTime = Math.min(offlineTime, maxOfflineTime);
       
-      userData.current_mining += (userData.mining_rate * effectiveOfflineTime) / 1000;
+      userData.current_mining = userData.total_mined + (userData.mining_rate * effectiveOfflineTime) / 1000;
       userData.last_login_time = now;
 
       await pool.query('UPDATE users SET current_mining = $1, last_login_time = $2 WHERE id = $3', 
@@ -179,19 +198,19 @@ app.get('/api/game-state/:userId', authenticateUser, async (req, res) => {
       res.status(404).json({ error: 'User not found' });
     }
   } catch (error) {
-    console.error('Error fetching game state:', error);
+    logger.error('Error fetching game state:', error);
     res.status(500).json({ error: 'Error fetching game state' });
   }
 });
 
 app.get('/api/leaderboard', async (req, res) => {
   try {
-    console.log('Fetching leaderboard data');
+    logger.info('Fetching leaderboard data');
     const result = await pool.query('SELECT id, username, balance FROM users ORDER BY balance DESC LIMIT 10');
-    console.log('Leaderboard data:', result.rows);
+    logger.info('Leaderboard data:', result.rows);
     res.json(result.rows);
   } catch (error) {
-    console.error('Error fetching leaderboard:', error);
+    logger.error('Error fetching leaderboard:', error);
     res.status(500).json({ error: 'Error fetching leaderboard', details: error.message });
   }
 });
@@ -206,7 +225,7 @@ app.get('/api/player-rank/:userId', authenticateUser, async (req, res) => {
     `, [userId]);
     res.json({ rank: result.rows[0].rank });
   } catch (error) {
-    console.error('Error fetching player rank:', error);
+    logger.error('Error fetching player rank:', error);
     res.status(500).json({ error: 'Error fetching player rank' });
   }
 });
@@ -218,10 +237,10 @@ app.post('/api/claim/:userId', authenticateUser, async (req, res) => {
     if (amount < 0.1) {
       return res.status(400).json({ error: 'Minimum claim amount is 0.1' });
     }
-    await pool.query('UPDATE users SET balance = balance + $1, current_mining = 0, last_claim_time = $2 WHERE id = $3', [amount, Date.now(), userId]);
+    await pool.query('UPDATE users SET balance = balance + $1, current_mining = 0, total_mined = total_mined + $1, last_claim_time = $2 WHERE id = $3', [amount, Date.now(), userId]);
     res.json({ success: true, amount });
   } catch (error) {
-    console.error('Error claiming mining:', error);
+    logger.error('Error claiming mining:', error);
     res.status(500).json({ error: 'Error claiming mining' });
   }
 });
@@ -247,7 +266,7 @@ app.post('/api/daily-bonus/:userId', authenticateUser, async (req, res) => {
       res.status(404).json({ error: 'User not found' });
     }
   } catch (error) {
-    console.error('Error claiming daily bonus:', error);
+    logger.error('Error claiming daily bonus:', error);
     res.status(500).json({ error: 'Error claiming daily bonus' });
   }
 });
@@ -276,7 +295,7 @@ app.post('/api/referral/:userId/:referralCode', authenticateUser, async (req, re
       res.status(404).json({ error: 'Referrer not found' });
     }
   } catch (error) {
-    console.error('Error processing referral:', error);
+    logger.error('Error processing referral:', error);
     res.status(500).json({ error: 'Error processing referral' });
   }
 });
@@ -299,7 +318,7 @@ app.post('/api/subscribe/:userId/:channelIndex', authenticateUser, async (req, r
       res.status(404).json({ error: 'User not found' });
     }
   } catch (error) {
-    console.error('Error subscribing to channel:', error);
+    logger.error('Error subscribing to channel:', error);
     res.status(500).json({ error: 'Error subscribing to channel' });
   }
 });
@@ -325,7 +344,7 @@ app.post('/api/submit-video/:userId', authenticateUser, async (req, res) => {
       res.status(404).json({ error: 'User not found' });
     }
   } catch (error) {
-    console.error('Error submitting video:', error);
+    logger.error('Error submitting video:', error);
     res.status(500).json({ error: 'Error submitting video' });
   }
 });
@@ -339,32 +358,32 @@ app.post('/send-message', async (req, res) => {
     });
     res.json({ success: true, message: 'Message sent to bot' });
   } catch (error) {
-    console.error('Error sending message to bot:', error);
+    logger.error('Error sending message to bot:', error);
     res.status(500).json({ error: 'Error sending message to bot' });
   }
 });
 
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  logger.error(err.stack);
   res.status(500).send('Something broke!');
 });
 
 app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
-  console.log('Environment variables:');
-  console.log('DATABASE_URL:', process.env.DATABASE_URL ? 'Set' : 'Not set');
-  console.log('RAILWAY_STATIC_URL:', process.env.RAILWAY_STATIC_URL);
-  console.log('TELEGRAM_BOT_TOKEN:', process.env.TELEGRAM_BOT_TOKEN ? 'Set' : 'Not set');
+  logger.info(`Server running at http://localhost:${port}`);
+  logger.info('Environment variables:');
+  logger.info('DATABASE_URL:', process.env.DATABASE_URL ? 'Set' : 'Not set');
+  logger.info('RAILWAY_STATIC_URL:', process.env.RAILWAY_STATIC_URL);
+  logger.info('TELEGRAM_BOT_TOKEN:', process.env.TELEGRAM_BOT_TOKEN ? 'Set' : 'Not set');
 });
 
 process.on('uncaughtException', (error) => {
-  console.error('Uncaught Exception:', error);
+  logger.error('Uncaught Exception:', error);
   // Здесь можно добавить логику для graceful shutdown
   process.exit(1);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
   // Здесь можно добавить логику для graceful shutdown
   process.exit(1);
 });
