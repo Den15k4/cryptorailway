@@ -134,6 +134,21 @@ async function saveGame() {
     }
 }
 
+async function fetchGameState() {
+    try {
+        const response = await fetch(`/api/game-state/${tg.initDataUnsafe.user.id}`);
+        if (response.ok) {
+            const data = await response.json();
+            Object.assign(game, data);
+            updateUI();
+        } else {
+            throw new Error('Failed to fetch game state');
+        }
+    } catch (error) {
+        console.error('Error fetching game state:', error);
+    }
+}
+
 async function updateLeaderboard() {
     if (currentTab === 'leaderboard') {
         try {
@@ -686,6 +701,8 @@ setInterval(() => {
 setInterval(() => {
     saveGame();
 }, 5000);
+
+setInterval(fetchGameState, 10000);
 
 window.addEventListener('beforeunload', () => {
     saveGame();
