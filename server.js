@@ -57,6 +57,11 @@ app.post(`/webhook/${process.env.TELEGRAM_BOT_TOKEN}`, async (req, res) => {
         chat_id: message.chat.id,
         text: 'Добро пожаловать в CryptoVerse Miner!'
       });
+    } else if (message && message.text === '/help') {
+      await axios.post(`${TELEGRAM_API}/sendMessage`, {
+        chat_id: message.chat.id,
+        text: 'Это игра-симулятор майнинга криптовалюты. Чтобы начать, просто откройте веб-приложение!'
+      });
     }
     
     res.sendStatus(200);
@@ -70,7 +75,16 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-app.get('/api/game/:userId', async (req, res) => {
+// Middleware для проверки аутентификации
+const authenticateUser = (req, res, next) => {
+  const userId = req.params.userId || req.body.userId;
+  if (!userId) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  next();
+};
+
+app.get('/api/game/:userId', authenticateUser, async (req, res) => {
   try {
     const userId = req.params.userId;
     const result = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
@@ -100,12 +114,13 @@ app.get('/api/game/:userId', async (req, res) => {
         subscribed_channels: [],
         daily_bonus_day: 0,
         last_daily_bonus_time: 0,
-        referrals: []
+        referrals: [],
+        last_video_submission: 0
       };
       await pool.query(`
-        INSERT INTO users (id, username, current_mining, balance, last_claim_time, last_login_time, mining_rate, subscribed_channels, daily_bonus_day, last_daily_bonus_time, referrals)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-      `, [newUser.id, newUser.username, newUser.current_mining, newUser.balance, newUser.last_claim_time, newUser.last_login_time, newUser.mining_rate, JSON.stringify(newUser.subscribed_channels), newUser.daily_bonus_day, newUser.last_daily_bonus_time, JSON.stringify(newUser.referrals)]);
+        INSERT INTO users (id, username, current_mining, balance, last_claim_time, last_login_time, mining_rate, subscribed_channels, daily_bonus_day, last_daily_bonus_time, referrals, last_video_submission)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      `, [newUser.id, newUser.username, newUser.current_mining, newUser.balance, newUser.last_claim_time, newUser.last_login_time, newUser.mining_rate, JSON.stringify(newUser.subscribed_channels), newUser.daily_bonus_day, newUser.last_daily_bonus_time, JSON.stringify(newUser.referrals), newUser.last_video_submission]);
       res.json(newUser);
     }
   } catch (error) {
@@ -114,7 +129,7 @@ app.get('/api/game/:userId', async (req, res) => {
   }
 });
 
-app.post('/api/game/:userId', async (req, res) => {
+app.post('/api/game/:userId', authenticateUser, async (req, res) => {
   try {
     const userId = req.params.userId;
     const gameData = req.body;
@@ -122,10 +137,10 @@ app.post('/api/game/:userId', async (req, res) => {
       UPDATE users SET
       current_mining = $1, balance = $2, last_claim_time = $3, last_login_time = $4,
       mining_rate = $5, subscribed_channels = $6, daily_bonus_day = $7,
-      last_daily_bonus_time = $8, username = $9 WHERE id = $10
+      last_daily_bonus_time = $8, username = $9, last_video_submission = $10 WHERE id = $11
     `, [gameData.current_mining, gameData.balance, gameData.last_claim_time, gameData.last_login_time,
         gameData.mining_rate, JSON.stringify(gameData.subscribed_channels), gameData.daily_bonus_day,
-        gameData.last_daily_bonus_time, gameData.username, userId]);
+        gameData.last_daily_bonus_time, gameData.username, gameData.last_video_submission, userId]);
     res.json({ success: true });
   } catch (error) {
     console.error('Error saving game:', error);
@@ -133,7 +148,7 @@ app.post('/api/game/:userId', async (req, res) => {
   }
 });
 
-app.get('/api/game-state/:userId', async (req, res) => {
+app.get('/api/game-state/:userId', authenticateUser, async (req, res) => {
   try {
     const userId = req.params.userId;
     const result = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
@@ -172,7 +187,7 @@ app.get('/api/leaderboard', async (req, res) => {
   }
 });
 
-app.get('/api/player-rank/:userId', async (req, res) => {
+app.get('/api/player-rank/:userId', authenticateUser, async (req, res) => {
   try {
     const userId = req.params.userId;
     const result = await pool.query(`
@@ -187,10 +202,13 @@ app.get('/api/player-rank/:userId', async (req, res) => {
   }
 });
 
-app.post('/api/claim/:userId', async (req, res) => {
+app.post('/api/claim/:userId', authenticateUser, async (req, res) => {
   try {
     const userId = req.params.userId;
     const { amount } = req.body;
+    if (amount < 0.1) {
+      return res.status(400).json({ error: 'Minimum claim amount is 0.1' });
+    }
     await pool.query('UPDATE users SET balance = balance + $1, current_mining = 0, last_claim_time = $2 WHERE id = $3', [amount, Date.now(), userId]);
     res.json({ success: true, amount });
   } catch (error) {
@@ -199,7 +217,7 @@ app.post('/api/claim/:userId', async (req, res) => {
   }
 });
 
-app.post('/api/daily-bonus/:userId', async (req, res) => {
+app.post('/api/daily-bonus/:userId', authenticateUser, async (req, res) => {
   try {
     const userId = req.params.userId;
     const result = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
@@ -225,7 +243,7 @@ app.post('/api/daily-bonus/:userId', async (req, res) => {
   }
 });
 
-app.post('/api/referral/:userId/:referralCode', async (req, res) => {
+app.post('/api/referral/:userId/:referralCode', authenticateUser, async (req, res) => {
   try {
     const userId = req.params.userId;
     const referralCode = req.params.referralCode;
@@ -254,7 +272,7 @@ app.post('/api/referral/:userId/:referralCode', async (req, res) => {
   }
 });
 
-app.post('/api/subscribe/:userId/:channelIndex', async (req, res) => {
+app.post('/api/subscribe/:userId/:channelIndex', authenticateUser, async (req, res) => {
   try {
     const userId = req.params.userId;
     const channelIndex = parseInt(req.params.channelIndex);
@@ -263,7 +281,7 @@ app.post('/api/subscribe/:userId/:channelIndex', async (req, res) => {
       const subscribedChannels = result.rows[0].subscribed_channels || [];
       if (!subscribedChannels.includes(channelIndex)) {
         subscribedChannels.push(channelIndex);
-        await pool.query('UPDATE users SET subscribed_channels = $1 WHERE id = $2', [JSON.stringify(subscribedChannels), userId]);
+        await pool.query('UPDATE users SET subscribed_channels = $1, mining_rate = mining_rate + 0.003 WHERE id = $2', [JSON.stringify(subscribedChannels), userId]);
         res.json({ success: true });
       } else {
         res.status(400).json({ error: 'Already subscribed to this channel' });
@@ -274,6 +292,32 @@ app.post('/api/subscribe/:userId/:channelIndex', async (req, res) => {
   } catch (error) {
     console.error('Error subscribing to channel:', error);
     res.status(500).json({ error: 'Error subscribing to channel' });
+  }
+});
+
+app.post('/api/submit-video/:userId', authenticateUser, async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const { videoLink } = req.body;
+    const result = await pool.query('SELECT last_video_submission FROM users WHERE id = $1', [userId]);
+    if (result.rows.length > 0) {
+      const user = result.rows[0];
+      const now = Date.now();
+      const oneDayInMs = 24 * 60 * 60 * 1000;
+      if (!user.last_video_submission || now - user.last_video_submission >= oneDayInMs) {
+        const reward = 5; // Example reward amount
+        await pool.query('UPDATE users SET balance = balance + $1, last_video_submission = $2 WHERE id = $3', [reward, now, userId]);
+        res.json({ success: true, reward });
+      } else {
+        const timeLeft = oneDayInMs - (now - user.last_video_submission);
+        res.status(400).json({ error: 'Video already submitted today', timeLeft });
+      }
+    } else {
+      res.status(404).json({ error: 'User not found' });
+    }
+  } catch (error) {
+    console.error('Error submitting video:', error);
+    res.status(500).json({ error: 'Error submitting video' });
   }
 });
 
@@ -306,10 +350,12 @@ app.listen(port, () => {
 
 process.on('uncaughtException', (error) => {
   console.error('Uncaught Exception:', error);
+  // Здесь можно добавить логику для graceful shutdown
   process.exit(1);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  // Здесь можно добавить логику для graceful shutdown
   process.exit(1);
 });

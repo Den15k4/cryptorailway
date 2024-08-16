@@ -37,17 +37,18 @@ async function loadGame(userId) {
       subscribedChannels: [],
       dailyBonusDay: 0,
       lastDailyBonusTime: 0,
-      referrals: []
+      referrals: [],
+      lastVideoSubmission: 0
     };
-    await query('INSERT INTO users (id, current_mining, balance, last_claim_time, last_login_time, mining_rate, subscribed_channels, daily_bonus_day, last_daily_bonus_time, referrals) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)', 
-      [newUser.id, newUser.currentMining, newUser.balance, newUser.lastClaimTime, newUser.lastLoginTime, newUser.miningRate, JSON.stringify(newUser.subscribedChannels), newUser.dailyBonusDay, newUser.lastDailyBonusTime, JSON.stringify(newUser.referrals)]);
+    await query('INSERT INTO users (id, current_mining, balance, last_claim_time, last_login_time, mining_rate, subscribed_channels, daily_bonus_day, last_daily_bonus_time, referrals, last_video_submission) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)', 
+      [newUser.id, newUser.currentMining, newUser.balance, newUser.lastClaimTime, newUser.lastLoginTime, newUser.miningRate, JSON.stringify(newUser.subscribedChannels), newUser.dailyBonusDay, newUser.lastDailyBonusTime, JSON.stringify(newUser.referrals), newUser.lastVideoSubmission]);
     return newUser;
   }
 }
 
 async function saveGame(userId, gameData) {
-  await query('UPDATE users SET current_mining = $1, balance = $2, last_claim_time = $3, last_login_time = $4, mining_rate = $5, subscribed_channels = $6, daily_bonus_day = $7, last_daily_bonus_time = $8, referrals = $9 WHERE id = $10',
-    [gameData.currentMining, gameData.balance, gameData.lastClaimTime, gameData.lastLoginTime, gameData.miningRate, JSON.stringify(gameData.subscribedChannels), gameData.dailyBonusDay, gameData.lastDailyBonusTime, JSON.stringify(gameData.referrals), userId]);
+  await query('UPDATE users SET current_mining = $1, balance = $2, last_claim_time = $3, last_login_time = $4, mining_rate = $5, subscribed_channels = $6, daily_bonus_day = $7, last_daily_bonus_time = $8, referrals = $9, last_video_submission = $10 WHERE id = $11',
+    [gameData.currentMining, gameData.balance, gameData.lastClaimTime, gameData.lastLoginTime, gameData.miningRate, JSON.stringify(gameData.subscribedChannels), gameData.dailyBonusDay, gameData.lastDailyBonusTime, JSON.stringify(gameData.referrals), gameData.lastVideoSubmission, userId]);
 }
 
 async function updateLeaderboard(userId, username, balance) {
@@ -60,9 +61,34 @@ async function getLeaderboard() {
   return result.rows;
 }
 
-async function getFullLeaderboard() {
-  const result = await query('SELECT * FROM leaderboard ORDER BY balance DESC');
-  return result.rows;
+async function getPlayerRank(userId) {
+  const result = await query(`
+    SELECT COUNT(*) + 1 as rank
+    FROM users
+    WHERE balance > (SELECT balance FROM users WHERE id = $1)
+  `, [userId]);
+  return result.rows[0].rank;
 }
 
-module.exports = { loadGame, saveGame, updateLeaderboard, getLeaderboard, getFullLeaderboard };
+async function addReferral(referrerId, referredId, referredUsername) {
+  const referrerResult = await query('SELECT referrals FROM users WHERE id = $1', [referrerId]);
+  if (referrerResult.rows.length > 0) {
+    const referrals = JSON.parse(referrerResult.rows[0].referrals);
+    if (!referrals.some(r => r.id === referredId)) {
+      referrals.push({ id: referredId, username: referredUsername, minedAmount: 0 });
+      await query('UPDATE users SET referrals = $1 WHERE id = $2', [JSON.stringify(referrals), referrerId]);
+      return true;
+    }
+  }
+  return false;
+}
+
+module.exports = { 
+  loadGame, 
+  saveGame, 
+  updateLeaderboard, 
+  getLeaderboard, 
+  getPlayerRank,
+  addReferral,
+  query // Экспортируем query для использования в других модулях при необходимости
+};

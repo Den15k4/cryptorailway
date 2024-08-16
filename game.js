@@ -10,7 +10,8 @@ let game = {
     dailyBonusDay: 0,
     lastDailyBonusTime: 0,
     referrals: [],
-    referralBonus: 5
+    referralBonus: 5,
+    lastVideoSubmission: 0
 };
 
 let saveGameTimeout;
@@ -125,7 +126,8 @@ async function saveGame() {
             subscribed_channels: game.subscribedChannels,
             daily_bonus_day: game.dailyBonusDay,
             last_daily_bonus_time: game.lastDailyBonusTime,
-            username: tg.initDataUnsafe.user.username
+            username: tg.initDataUnsafe.user.username,
+            last_video_submission: game.lastVideoSubmission
         };
         
         const response = await fetch(`/api/game/${tg.initDataUnsafe.user.id}`, {
@@ -486,11 +488,8 @@ async function claimDailyBonus() {
 
 function inviteFriend() {
     const referralLink = `https://t.me/paradox_token_bot?start=ref_${tg.initDataUnsafe.user.id}`;
-    const message = `Приглашаю тебя в новый мир майнинга: ${referralLink}`;
     
-    console.log('Trying to invite friend. tg object:', tg);
     if (tg.initDataUnsafe.user.id) {
-        console.log('Using Telegram Mini App API to share');
         tg.showPopup({
             title: 'Пригласить друга',
             message: 'Хотите отправить приглашение другу?',
@@ -500,13 +499,13 @@ function inviteFriend() {
             ]
         }, (buttonId) => {
             if (buttonId === 'share') {
-                tg.openTelegramLink(referralLink);
-                showNotification('Ссылка для приглашения открыта в Telegram');
+                tg.shareUrl(referralLink);
+                showNotification('Ссылка для приглашения отправлена');
             }
         });
     } else {
         console.log('Falling back to clipboard copy');
-        navigator.clipboard.writeText(message).then(() => {
+        navigator.clipboard.writeText(referralLink).then(() => {
             showNotification('Реферальная ссылка скопирована в буфер обмена');
         }).catch(err => {
             console.error('Ошибка копирования: ', err);
@@ -520,6 +519,22 @@ function checkReferral() {
     const referralCode = urlParams.get('start');
     if (referralCode && referralCode.startsWith('ref_')) {
         handleReferral(referralCode.slice(4));
+    }
+}
+
+async function handleReferral(referrerId) {
+    try {
+        const response = await fetch(`/api/referral/${tg.initDataUnsafe.user.id}/${referrerId}`, {
+            method: 'POST'
+        });
+        if (response.ok) {
+            showNotification('Вы успешно присоединились по реферальной ссылке!');
+        } else {
+            const data = await response.json();
+            console.error('Failed to process referral:', data.error);
+        }
+    } catch (error) {
+        console.error('Error processing referral:', error);
     }
 }
 
@@ -544,12 +559,15 @@ async function submitVideo() {
                 if (response.ok) {
                     const data = await response.json();
                     game.balance += data.reward;
+                    game.lastVideoSubmission = Date.now();
                     showNotification(`Видео принято! Вы получили ${data.reward} монет.`);
                     updateUI();
+                    await saveGame();
                     await updateLeaderboard();
                     hideModal();
                 } else {
-                    throw new Error('Failed to submit video');
+                    const errorData = await response.json();
+                    showNotification(errorData.error || "Произошла ошибка при отправке видео.");
                 }
             } catch (error) {
                 console.error('Error submitting video:', error);
@@ -659,64 +677,84 @@ async function sendMessageToBot(message) {
             body: JSON.stringify({ message }),
         });
         if (!response.ok) {
-            throw new Error('Network response was not ok');
+            throw new Error('Network response was not ok');}
+            const result = await response.json();
+            console.log(result.message);
+        } catch (error) {
+            console.error('Error sending message to bot:', error);
         }
-        const result = await response.json();
-        console.log(result.message);
-    } catch (error) {
-        console.error('Error sending message to bot:', error);
     }
-}
-
-function initParticles() {
-    particlesJS("particles-js", {
-        particles: {
-            number: { value: 150, density: { enable: true, value_area: 800 } },
-            color: { value: "#8774e1" },
-            shape: { type: "circle", stroke: { width: 0, color: "#000000" }, polygon: { nb_sides: 5 } },
-            opacity: { value: 0.8, random: true, anim: { enable: true, speed: 1, opacity_min: 0.1, sync: false } },
-            size: { value: 5, random: true, anim: { enable: true, speed: 3, size_min: 0.1, sync: false } },
-            line_linked: { enable: true, distance: 150, color: "#8774e1", opacity: 0.6, width: 1.5 },
-            move: { enable: true, speed: 6, direction: "none", random: true, straight: false, out_mode: "out", bounce: false, attract: { enable: false, rotateX: 600, rotateY: 1200 } }
-        },
-        interactivity: {
-            detect_on: "canvas",
-            events: { onhover: { enable: true, mode: "repulse" }, onclick: { enable: true, mode: "push" }, resize: true },
-            modes: { grab: { distance: 400, line_linked: { opacity: 1 } }, bubble: { distance: 400, size: 40, duration: 2, opacity: 8, speed: 3 }, repulse: { distance: 200, duration: 0.4 }, push: { particles_nb: 4 }, remove: { particles_nb: 2 } }
-        },
-        retina_detect: true
-    });
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOMContentLoaded event fired');
-    initGame().catch(error => {
-        console.error('Failed to initialize game:', error);
-        showNotification('Произошла ошибка при загрузке игры. Пожалуйста, обновите страницу.');
-    });
-    document.body.addEventListener('click', (event) => {
-        if (event.target.closest('#miningContainer')) {
-            handleManualMining(event);
-        }
+    
+    function initParticles() {
+        particlesJS("particles-js", {
+            particles: {
+                number: { value: 150, density: { enable: true, value_area: 800 } },
+                color: { value: "#8774e1" },
+                shape: { type: "circle", stroke: { width: 0, color: "#000000" }, polygon: { nb_sides: 5 } },
+                opacity: { value: 0.8, random: true, anim: { enable: true, speed: 1, opacity_min: 0.1, sync: false } },
+                size: { value: 5, random: true, anim: { enable: true, speed: 3, size_min: 0.1, sync: false } },
+                line_linked: { enable: true, distance: 150, color: "#8774e1", opacity: 0.6, width: 1.5 },
+                move: { enable: true, speed: 6, direction: "none", random: true, straight: false, out_mode: "out", bounce: false, attract: { enable: false, rotateX: 600, rotateY: 1200 } }
+            },
+            interactivity: {
+                detect_on: "canvas",
+                events: { onhover: { enable: true, mode: "repulse" }, onclick: { enable: true, mode: "push" }, resize: true },
+                modes: { grab: { distance: 400, line_linked: { opacity: 1 } }, bubble: { distance: 400, size: 40, duration: 2, opacity: 8, speed: 3 }, repulse: { distance: 200, duration: 0.4 }, push: { particles_nb: 4 }, remove: { particles_nb: 2 } }
+            },
+            retina_detect: true
+        });
+    }
+    
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('DOMContentLoaded event fired');
+        initGame().catch(error => {
+            console.error('Failed to initialize game:', error);
+            showNotification('Произошла ошибка при загрузке игры. Пожалуйста, обновите страницу.');
+        });
+        document.body.addEventListener('click', (event) => {
+            if (event.target.closest('#miningContainer')) {
+                handleManualMining(event);
+            }
+        });
+        
+        initTabButtons();
     });
     
-    initTabButtons();
-});
-
-setInterval(() => {
-    updateMining();
-}, 1000);
-
-setInterval(() => {
-    saveGame();
-}, 5000);
-
-setInterval(fetchGameState, 10000);
-
-window.addEventListener('beforeunload', () => {
-    saveGame();
-});
-
-console.log('Telegram Web App data:', tg.initDataUnsafe);
-
-tg.expand();
+    // Оптимизированное сохранение игры
+    let lastSaveTime = 0;
+    const saveInterval = 30000; // 30 секунд
+    
+    function smartSaveGame() {
+        const now = Date.now();
+        if (now - lastSaveTime >= saveInterval) {
+            saveGame();
+            lastSaveTime = now;
+        }
+    }
+    
+    setInterval(() => {
+        updateMining();
+        smartSaveGame();
+    }, 1000);
+    
+    // Оптимизированное обновление состояния игры
+    let lastUpdateTime = 0;
+    const updateInterval = 30000; // 30 секунд
+    
+    async function smartFetchGameState() {
+        const now = Date.now();
+        if (now - lastUpdateTime >= updateInterval) {
+            await fetchGameState();
+            lastUpdateTime = now;
+        }
+    }
+    
+    setInterval(smartFetchGameState, 1000);
+    
+    window.addEventListener('beforeunload', () => {
+        saveGame();
+    });
+    
+    console.log('Telegram Web App data:', tg.initDataUnsafe);
+    
+    tg.expand();
