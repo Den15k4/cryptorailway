@@ -4,6 +4,10 @@ const axios = require('axios');
 const { Pool } = require('pg');
 const winston = require('winston');
 require('dotenv').config();
+console.log('Starting application...');
+console.log('Node version:', process.version);
+console.log('Current directory:', process.cwd());
+console.log('Environment variables:', process.env);
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -367,7 +371,9 @@ app.use((err, req, res, next) => {
   logger.error(err.stack);
   res.status(500).send('Something broke!');
 });
-
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
+});
 app.listen(port, () => {
   logger.info(`Server running at http://localhost:${port}`);
   logger.info('Environment variables:');
