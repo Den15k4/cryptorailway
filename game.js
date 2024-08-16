@@ -99,18 +99,9 @@ async function loadGame() {
             console.log('Loaded user data:', userData);
             Object.assign(game, userData);
             
-            const now = Date.now();
-            const offlineTime = now - game.lastLoginTime;
-            const maxOfflineTime = 4 * 60 * 60 * 1000;
-            const effectiveOfflineTime = Math.min(offlineTime, maxOfflineTime);
-            
-            game.currentMining += (game.miningRate * effectiveOfflineTime) / 1000;
-            game.lastLoginTime = now;
-
-            console.log('Current mining after offline calculation:', game.currentMining);
+            console.log('Current mining after loading:', game.currentMining);
 
             updateUI();
-            await saveGame();
         } else {
             console.error('Failed to load game data. Status:', response.status);
             const errorText = await response.text();
@@ -180,27 +171,13 @@ function updateUI() {
     
     const currentMiningElement = document.getElementById('currentMining');
     if (currentMiningElement) {
-        animateValue(currentMiningElement, parseFloat(currentMiningElement.textContent), game.currentMining, 1000);
+        currentMiningElement.textContent = formatNumber(game.currentMining);
     }
     
     const balanceElement = document.getElementById('balanceAmount');
     if (balanceElement) {
         balanceElement.textContent = formatNumber(game.balance);
     }
-}
-
-function animateValue(element, start, end, duration) {
-    let startTimestamp = null;
-    const step = (timestamp) => {
-        if (!startTimestamp) startTimestamp = timestamp;
-        const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-        const currentValue = start + progress * (end - start);
-        element.textContent = formatNumber(currentValue);
-        if (progress < 1) {
-            window.requestAnimationFrame(step);
-        }
-    };
-    window.requestAnimationFrame(step);
 }
 
 function showMainTab() {

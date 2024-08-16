@@ -75,7 +75,19 @@ app.get('/api/game/:userId', async (req, res) => {
     const userId = req.params.userId;
     const result = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
     if (result.rows.length > 0) {
-      res.json(result.rows[0]);
+      const userData = result.rows[0];
+      const now = Date.now();
+      const offlineTime = now - userData.last_login_time;
+      const maxOfflineTime = 4 * 60 * 60 * 1000;
+      const effectiveOfflineTime = Math.min(offlineTime, maxOfflineTime);
+      
+      userData.current_mining += (userData.mining_rate * effectiveOfflineTime) / 1000;
+      userData.last_login_time = now;
+
+      await pool.query('UPDATE users SET current_mining = $1, last_login_time = $2 WHERE id = $3', 
+        [userData.current_mining, userData.last_login_time, userId]);
+
+      res.json(userData);
     } else {
       const newUser = {
         id: userId,
