@@ -102,10 +102,14 @@ async function loadGame() {
             const now = Date.now();
             const offlineTime = now - game.lastLoginTime;
             const maxOfflineTime = 4 * 60 * 60 * 1000;
-            const effectiveOfflineTime = Math.min(offlineTime, maxOfflineTime);
-            
-            game.currentMining += (game.miningRate * effectiveOfflineTime) / 1000;
+            if (offlineTime > maxOfflineTime) {
+                const excessTime = offlineTime - maxOfflineTime;
+                game.lastClaimTime += excessTime;
+            }
             game.lastLoginTime = now;
+            
+            const effectiveOfflineTime = Math.min(offlineTime, maxOfflineTime);
+            game.currentMining += (game.miningRate * effectiveOfflineTime) / 1000;
 
             console.log('Current mining after offline calculation:', game.currentMining);
 
@@ -133,9 +137,6 @@ async function saveGame() {
             body: JSON.stringify(game),
         });
         if (!response.ok) {
-            console.error('Failed to save game data. Status:', response.status);
-            const errorText = await response.text();
-            console.error('Error details:', errorText);
             throw new Error('Failed to save game data');
         }
         console.log('Game saved successfully');
@@ -282,17 +283,16 @@ async function updateLeaderboardUI(leaderboardData) {
     `;
 
     try {
-        const fullLeaderboardResponse = await fetch('/api/full-leaderboard');
-        if (fullLeaderboardResponse.ok) {
-            const fullLeaderboard = await fullLeaderboardResponse.json();
-            const playerRank = fullLeaderboard.findIndex(player => player.id === tg.initDataUnsafe.user.id) + 1;
-            const displayRank = playerRank > 0 ? (playerRank > 100 ? '100+' : playerRank) : 'N/A';
+        const rankResponse = await fetch(`/api/player-rank/${tg.initDataUnsafe.user.id}`);
+        if (rankResponse.ok) {
+            const rankData = await rankResponse.json();
+            const displayRank = rankData.rank > 100 ? '100+' : rankData.rank;
             content += `<p>Ваше место: ${displayRank}</p>`;
         } else {
-            throw new Error('Failed to fetch full leaderboard');
+            throw new Error('Failed to fetch player rank');
         }
     } catch (error) {
-        console.error('Error fetching full leaderboard:', error);
+        console.error('Error fetching player rank:', error);
         content += `<p>Ваше место: N/A</p>`;
     }
 
@@ -460,35 +460,26 @@ async function checkSubscription(channelIndex) {
 }
 
 async function claimDailyBonus() {
-    const now = Date.now();
-    const oneDayInMs = 24 * 60 * 60 * 1000;
-    if (!game.lastDailyBonusTime || now - game.lastDailyBonusTime >= oneDayInMs) {
-        try {
-            const response = await fetch(`/api/daily-bonus/${tg.initDataUnsafe.user.id}`, {
-                method: 'POST'
-            });
-            const data = await response.json();
-            if (response.ok) {
-                game.balance += data.bonusAmount;
-                game.dailyBonusDay = data.newDailyBonusDay;
-                game.lastDailyBonusTime = now;
-                
-                showNotification(`Вы получили ежедневный бонус: ${data.bonusAmount} монет!`);
-                updateUI();
-                await saveGame();
-                await updateLeaderboard();
-            } else {
-                showNotification(data.error || "Не удалось получить ежедневный бонус. Попробуйте позже.");
-            }
-        } catch (error) {
-            console.error('Error claiming daily bonus:', error);
-            showNotification("Произошла ошибка при получении ежедневного бонуса. Попробуйте позже.");
+    try {
+        const response = await fetch(`/api/daily-bonus/${tg.initDataUnsafe.user.id}`, {
+            method: 'POST'
+        });
+        const data = await response.json();
+        if (response.ok) {
+            game.balance += data.bonusAmount;
+            game.dailyBonusDay = data.newDailyBonusDay;
+            game.lastDailyBonusTime = Date.now();
+            
+            showNotification(`Вы получили ежедневный бонус: ${data.bonusAmount} монет!`);
+            updateUI();
+            await saveGame();
+            await updateLeaderboard();
+        } else {
+            showNotification(data.error || "Не удалось получить ежедневный бонус. Попробуйте позже.");
         }
-    } else {
-        const timeLeft = oneDayInMs - (now - game.lastDailyBonusTime);
-        const hoursLeft = Math.floor(timeLeft / (60 * 60 * 1000));
-        const minutesLeft = Math.floor((timeLeft % (60 * 60 * 1000)) / (60 * 1000));
-        showNotification(`Вы уже получили сегодняшний бонус. Следующий бонус будет доступен через ${hoursLeft} ч ${minutesLeft} мин.`);
+    } catch (error) {
+        console.error('Error claiming daily bonus:', error);
+        showNotification("Произошла ошибка при получении ежедневного бонуса. Попробуйте позже.");
     }
     hideModal();
 }

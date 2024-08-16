@@ -133,13 +133,18 @@ app.get('/api/leaderboard', async (req, res) => {
   }
 });
 
-app.get('/api/full-leaderboard', async (req, res) => {
+app.get('/api/player-rank/:userId', async (req, res) => {
   try {
-    const result = await pool.query('SELECT id, username, balance FROM users ORDER BY balance DESC');
-    res.json(result.rows);
+    const userId = req.params.userId;
+    const result = await pool.query(`
+      SELECT COUNT(*) + 1 as rank
+      FROM users
+      WHERE balance > (SELECT balance FROM users WHERE id = $1)
+    `, [userId]);
+    res.json({ rank: result.rows[0].rank });
   } catch (error) {
-    console.error('Error fetching full leaderboard:', error);
-    res.status(500).json({ error: 'Error fetching full leaderboard' });
+    console.error('Error fetching player rank:', error);
+    res.status(500).json({ error: 'Error fetching player rank' });
   }
 });
 
