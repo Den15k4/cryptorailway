@@ -103,6 +103,7 @@ async function loadGame() {
             
             parsedGame.currentMining += (parsedGame.miningRate * effectiveOfflineTime) / 1000;
             parsedGame.lastLoginTime = now;
+            parsedGame.lastClaimTime = now;
             
             Object.assign(game, parsedGame);
         }
@@ -113,7 +114,11 @@ async function loadGame() {
         if (response.ok) {
             const userData = await response.json();
             console.log('Loaded user data:', userData);
-            Object.assign(game, userData, {currentMining: Math.max(game.currentMining, userData.currentMining)});
+            Object.assign(game, userData, {
+                currentMining: Math.max(game.currentMining, userData.current_mining),
+                lastClaimTime: Date.now(),
+                lastLoginTime: Date.now()
+            });
             
             console.log('Current mining after loading:', game.currentMining);
             saveGameToLocalStorage();
@@ -204,13 +209,12 @@ async function updateLeaderboard() {
 function updateMining() {
     const now = Date.now();
     const timePassed = now - game.lastClaimTime;
-    const maxOfflineTime = 4 * 60 * 60 * 1000;
     
-    const effectiveTimePassed = Math.min(timePassed, maxOfflineTime);
-    
-    game.currentMining += (game.miningRate * effectiveTimePassed) / 1000;
+    game.currentMining += (game.miningRate * timePassed) / 1000;
+    game.totalMined += (game.miningRate * timePassed) / 1000;
     game.lastClaimTime = now;
     
+    console.log('Mining updated:', game.currentMining);
     updateUI();
 }
 
@@ -640,6 +644,7 @@ function handleManualMining(event) {
     if (now - lastClickTime >= clickCooldown) {
         lastClickTime = now;
         game.currentMining += 0.001;
+        game.totalMined += 0.001;
         updateUI();
         showManualMiningEffect(event);
         saveGame();
@@ -753,6 +758,12 @@ document.addEventListener('DOMContentLoaded', () => {
     initTabButtons();
 });
 
+function updateGameState() {
+    updateMining();
+    saveGameToLocalStorage();
+    updateUI();
+}
+
 // Оптимизированное сохранение игры
 let lastSaveTime = 0;
 const saveInterval = 30000; // 30 секунд
@@ -763,12 +774,6 @@ function smartSaveGame() {
         saveGame();
         lastSaveTime = now;
     }
-}
-
-function updateGameState() {
-    updateMining();
-    saveGameToLocalStorage();
-    updateUI();
 }
 
 // Измените интервал обновления
@@ -813,6 +818,17 @@ async function syncWithServer() {
 
 // Вызывайте эту функцию периодически, например, каждые 5 минут
 setInterval(syncWithServer, 5 * 60 * 1000);
+
+function debugMining() {
+    console.log('Current mining:', game.currentMining);
+    console.log('Total mined:', game.totalMined);
+    console.log('Mining rate:', game.miningRate);
+    console.log('Last claim time:', new Date(game.lastClaimTime));
+    console.log('Current time:', new Date());
+}
+
+// Вызовем функцию отладки каждые 10 секунд
+setInterval(debugMining, 10000);
 
 window.addEventListener('beforeunload', () => {
     saveGame();

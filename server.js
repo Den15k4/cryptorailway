@@ -128,11 +128,13 @@ app.get('/api/game/:userId', authenticateUser, async (req, res) => {
       const maxOfflineTime = 4 * 60 * 60 * 1000;
       const effectiveOfflineTime = Math.min(offlineTime, maxOfflineTime);
       
-      userData.current_mining = userData.total_mined + (userData.mining_rate * effectiveOfflineTime) / 1000;
+      userData.current_mining += (userData.mining_rate * effectiveOfflineTime) / 1000;
+      userData.total_mined += (userData.mining_rate * effectiveOfflineTime) / 1000;
       userData.last_login_time = now;
+      userData.last_claim_time = now;
 
-      await pool.query('UPDATE users SET current_mining = $1, last_login_time = $2 WHERE id = $3', 
-        [userData.current_mining, userData.last_login_time, userId]);
+      await pool.query('UPDATE users SET current_mining = $1, total_mined = $2, last_login_time = $3, last_claim_time = $4 WHERE id = $5', 
+        [userData.current_mining, userData.total_mined, userData.last_login_time, userData.last_claim_time, userId]);
 
       res.json(userData);
     } else {
@@ -173,8 +175,8 @@ app.post('/api/game/:userId', authenticateUser, async (req, res) => {
       return res.status(400).json({ error: 'Invalid mining rate' });
     }
     
-    if (gameData.balance < 0 || gameData.current_mining < 0) {
-      return res.status(400).json({ error: 'Invalid balance or current mining' });
+    if (gameData.balance < 0 || gameData.current_mining < 0 || gameData.total_mined < 0) {
+      return res.status(400).json({ error: 'Invalid balance, current mining, or total mined' });
     }
 
     await pool.query(`
@@ -203,11 +205,12 @@ app.get('/api/game-state/:userId', authenticateUser, async (req, res) => {
       const maxOfflineTime = 4 * 60 * 60 * 1000;
       const effectiveOfflineTime = Math.min(offlineTime, maxOfflineTime);
       
-      userData.current_mining = userData.total_mined + (userData.mining_rate * effectiveOfflineTime) / 1000;
+      userData.current_mining += (userData.mining_rate * effectiveOfflineTime) / 1000;
+      userData.total_mined += (userData.mining_rate * effectiveOfflineTime) / 1000;
       userData.last_login_time = now;
 
-      await pool.query('UPDATE users SET current_mining = $1, last_login_time = $2 WHERE id = $3', 
-        [userData.current_mining, userData.last_login_time, userId]);
+      await pool.query('UPDATE users SET current_mining = $1, total_mined = $2, last_login_time = $3 WHERE id = $4', 
+        [userData.current_mining, userData.total_mined, userData.last_login_time, userId]);
 
       res.json(userData);
     } else {
