@@ -93,16 +93,30 @@ function formatNumber(num) {
 
 async function loadGame() {
     try {
+        const savedGame = localStorage.getItem('gameState');
+        if (savedGame) {
+            const parsedGame = JSON.parse(savedGame);
+            const now = Date.now();
+            const offlineTime = now - parsedGame.lastLoginTime;
+            const maxOfflineTime = 4 * 60 * 60 * 1000; // 4 часа
+            const effectiveOfflineTime = Math.min(offlineTime, maxOfflineTime);
+            
+            parsedGame.currentMining += (parsedGame.miningRate * effectiveOfflineTime) / 1000;
+            parsedGame.lastLoginTime = now;
+            
+            Object.assign(game, parsedGame);
+        }
+        
         console.log('Loading game data for user:', tg.initDataUnsafe.user.id);
         const response = await fetch(`/api/game/${tg.initDataUnsafe.user.id}?username=${encodeURIComponent(tg.initDataUnsafe.user.username)}`);
         console.log('Response status:', response.status);
         if (response.ok) {
             const userData = await response.json();
             console.log('Loaded user data:', userData);
-            Object.assign(game, userData);
+            Object.assign(game, userData, {currentMining: Math.max(game.currentMining, userData.currentMining)});
             
             console.log('Current mining after loading:', game.currentMining);
-
+            saveGameToLocalStorage();
             updateUI();
         } else {
             console.error('Failed to load game data. Status:', response.status);
@@ -114,6 +128,10 @@ async function loadGame() {
         console.error('Error loading game:', error);
         showNotification('Произошла ошибка при загрузке игры. Пожалуйста, попробуйте еще раз.');
     }
+}
+
+function saveGameToLocalStorage() {
+    localStorage.setItem('gameState', JSON.stringify(game));
 }
 
 async function saveGame() {
@@ -143,6 +161,7 @@ async function saveGame() {
             throw new Error('Failed to save game data');
         }
         console.log('Game saved successfully');
+        saveGameToLocalStorage();
     } catch (error) {
         console.error('Error saving game:', error);
         showNotification('Не удалось сохранить прогресс. Автоматическая попытка через 5 секунд...');
@@ -157,6 +176,7 @@ async function fetchGameState() {
             const data = await response.json();
             Object.assign(game, data);
             updateUI();
+            saveGameToLocalStorage();
         } else {
             throw new Error('Failed to fetch game state');
         }
@@ -396,6 +416,7 @@ async function claim() {
             showNotification("Крипто успешно собрано!");
             sendMessageToBot(`Пользователь ${tg.initDataUnsafe.user.username} собрал ${formatNumber(data.amount)} монет!`);
             await updateLeaderboard();
+            await saveGame();
             tg.HapticFeedback.impactOccurred('medium');
         } else {
             throw new Error('Failed to claim mining');
@@ -465,6 +486,13 @@ async function checkSubscription(channelIndex) {
 }
 
 async function claimDailyBonus() {
+    const lastBonusTime = localStorage.getItem('lastDailyBonusTime');
+    const now = Date.now();
+    if (lastBonusTime && now - parseInt(lastBonusTime) < 24 * 60 * 60 * 1000) {
+        showNotification("Вы уже получили дневной бонус. Попробуйте завтра.");
+        return;
+    }
+
     try {
         const response = await fetch(`/api/daily-bonus/${tg.initDataUnsafe.user.id}`, {
             method: 'POST'
@@ -473,7 +501,9 @@ async function claimDailyBonus() {
         if (response.ok) {
             game.balance += data.bonusAmount;
             game.dailyBonusDay = data.newDailyBonusDay;
-            game.lastDailyBonusTime = Date.now();
+            game.lastDailyBonusTime = now;
+            
+            localStorage.setItem('lastDailyBonusTime', now.toString());
             
             showNotification(`Вы получили ежедневный бонус: ${data.bonusAmount} монет!`);
             updateUI();
@@ -735,8 +765,15 @@ function smartSaveGame() {
     }
 }
 
-setInterval(() => {
+function updateGameState() {
     updateMining();
+    saveGameToLocalStorage();
+    updateUI();
+}
+
+// Измените интервал обновления
+setInterval(() => {
+    updateGameState();
     smartSaveGame();
 }, 1000);
 
@@ -753,6 +790,29 @@ async function smartFetchGameState() {
 }
 
 setInterval(smartFetchGameState, 1000);
+
+async function syncWithServer() {
+    try {
+        const response = await fetch(`/api/game/${tg.initDataUnsafe.user.id}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(game),
+        });
+        if (!response.ok) {
+            throw new Error('Failed to sync game data');
+        }
+        console.log('Game synced successfully');
+    } catch (error) {
+        console.error('Error syncing game:', error);
+        showNotification('Не удалось синхронизировать прогресс. Автоматическая попытка через 5 секунд...');
+        setTimeout(syncWithServer, 5000);
+    }
+}
+
+// Вызывайте эту функцию периодически, например, каждые 5 минут
+setInterval(syncWithServer, 5 * 60 * 1000);
 
 window.addEventListener('beforeunload', () => {
     saveGame();

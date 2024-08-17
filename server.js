@@ -4,10 +4,6 @@ const axios = require('axios');
 const { Pool } = require('pg');
 const winston = require('winston');
 require('dotenv').config();
-console.log('Starting application...');
-console.log('Node version:', process.version);
-console.log('Current directory:', process.cwd());
-console.log('Environment variables:', process.env);
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -32,7 +28,9 @@ if (process.env.NODE_ENV !== 'production') {
   }));
 }
 
-logger.info('Attempting to connect to database with URL:', process.env.DATABASE_URL);
+logger.info('Starting application...');
+logger.info('Node version:', process.version);
+logger.info('Current directory:', process.cwd());
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -106,6 +104,10 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
+});
+
 // Middleware для проверки аутентификации
 const authenticateUser = (req, res, next) => {
   const userId = req.params.userId || req.body.userId;
@@ -165,6 +167,16 @@ app.post('/api/game/:userId', authenticateUser, async (req, res) => {
   try {
     const userId = req.params.userId;
     const gameData = req.body;
+    
+    // Валидация данных
+    if (gameData.mining_rate > 0.1) {
+      return res.status(400).json({ error: 'Invalid mining rate' });
+    }
+    
+    if (gameData.balance < 0 || gameData.current_mining < 0) {
+      return res.status(400).json({ error: 'Invalid balance or current mining' });
+    }
+
     await pool.query(`
       UPDATE users SET
       current_mining = $1, total_mined = $2, balance = $3, last_claim_time = $4, last_login_time = $5,
@@ -371,9 +383,7 @@ app.use((err, req, res, next) => {
   logger.error(err.stack);
   res.status(500).send('Something broke!');
 });
-app.get('/health', (req, res) => {
-  res.status(200).send('OK');
-});
+
 app.listen(port, () => {
   logger.info(`Server running at http://localhost:${port}`);
   logger.info('Environment variables:');
