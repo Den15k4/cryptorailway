@@ -517,6 +517,8 @@ async function claimDailyBonus() {
 }
 function inviteFriend() {
     console.log('inviteFriend function called');
+    console.log('tg object:', tg);
+    console.log('User ID:', tg.initDataUnsafe.user.id);
     
     const referralLink = `https://t.me/paradox_token_bot?start=ref_${tg.initDataUnsafe.user.id}`;
     const shareText = `Присоединяйся к CryptoVerse Miner! Используй мою реферальную ссылку: ${referralLink}`;
