@@ -521,8 +521,7 @@ function inviteFriend() {
     console.log('tg object:', tg);
     console.log('User:', tg.initDataUnsafe.user);
     
-    const referralLink = `https://t.me/paradox_token_bot?start=ref_${tg.initDataUnsafe.user.id}`;
-    const shareText = `Присоединяйся к CryptoVerse Miner! Используй мою реферальную ссылку: ${referralLink}`;
+    const referralLink = `https://t.me/share/url?url=https://t.me/paradox_token_bot?start=ref_$%7Btg.initDataUnsafe.user.id%7D&text=%D0%BF%D1%80%D0%B8%D0%B2%D0%B5%D1%82%20%D0%BF%D1%80%D0%B8%D0%B2%D0%B5%D1%82%20%D0%BF%D1%80%D0%B8%D0%B2%D0%B5%D1%82`;
     
     if (tg.initDataUnsafe.user) {
         tg.showPopup({
