@@ -515,7 +515,6 @@ async function claimDailyBonus() {
         hideModal();
     }
 }
-
 function inviteFriend() {
     console.log('inviteFriend function called');
     
@@ -523,17 +522,9 @@ function inviteFriend() {
     const shareText = `Присоединяйся к CryptoVerse Miner! Используй мою реферальную ссылку: ${referralLink}`;
     
     if (tg.initDataUnsafe.user) {
-        tg.showPopup({
-            title: 'Пригласить друга',
-            message: 'Отправьте это сообщение своим друзьям:',
-            buttons: [
-                {id: 'share', type: 'default', text: 'Отправить'},
-                {id: 'cancel', type: 'cancel', text: 'Отмена'}
-            ]
-        }, (buttonId) => {
-            if (buttonId === 'share') {
-                tg.sendMessage(shareText);
-            }
+        tg.shareUrl({
+            url: referralLink,
+            text: shareText
         });
     } else {
         console.log('Telegram WebApp is not available');
