@@ -528,8 +528,8 @@ function inviteFriend() {
     console.log('tg object:', tg);
     console.log('User:', tg.initDataUnsafe.user);
     
-    const referralLink = `https://t.me/paradox_token_bot?start=ref_${tg.initDataUnsafe.user.id}`;
-    const shareText = encodeURIComponent(`Присоединяйся к CryptoVerse Miner! Используй мою реферальную ссылку: ${referralLink}`);
+    //const referralLink = `https://t.me/paradox_token_bot?start=ref_${tg.initDataUnsafe.user.id}`;
+    //const shareText = encodeURIComponent(`Присоединяйся к CryptoVerse Miner! Используй мою реферальную ссылку: ${referralLink}`);
     const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${shareText}`;
     
     window.open(shareUrl, '_blank');
@@ -847,20 +847,5 @@ function initUI() {
     updateContentHeight();
 }
 
-// Добавляем стили для прокрутки
-const style = document.createElement('style');
-style.textContent = `
-    #mainContent {
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
-    }
-    #tabBar {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        background-color: var(--bg-color);
-        z-index: 1000;
-    }
-`;
+
 document.head.appendChild(style);
