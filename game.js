@@ -490,13 +490,6 @@ async function checkSubscription(channelIndex) {
 }
 
 async function claimDailyBonus() {
-    const lastBonusTime = localStorage.getItem('lastDailyBonusTime');
-    const now = Date.now();
-    if (lastBonusTime && now - parseInt(lastBonusTime) < 24 * 60 * 60 * 1000) {
-        showNotification("Вы уже получили дневной бонус. Попробуйте завтра.");
-        return;
-    }
-
     try {
         const response = await fetch(`/api/daily-bonus/${tg.initDataUnsafe.user.id}`, {
             method: 'POST'
@@ -505,20 +498,21 @@ async function claimDailyBonus() {
         if (response.ok) {
             game.balance += data.bonusAmount;
             game.dailyBonusDay = data.newDailyBonusDay;
-            game.lastDailyBonusTime = now;
+            game.lastDailyBonusTime = Date.now();
             
-            localStorage.setItem('lastDailyBonusTime', now.toString());
+            localStorage.setItem('lastDailyBonusTime', Date.now().toString());
             
             showNotification(`Вы получили ежедневный бонус: ${data.bonusAmount} монет!`);
             updateUI();
             await saveGame();
-            hideModal();
         } else {
             showNotification(data.error || "Не удалось получить ежедневный бонус. Попробуйте позже.");
         }
     } catch (error) {
         console.error('Error claiming daily bonus:', error);
         showNotification("Произошла ошибка при получении ежедневного бонуса. Попробуйте позже.");
+    } finally {
+        hideModal(); // Закрываем модальное окно в любом случае
     }
 }
 
