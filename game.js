@@ -515,18 +515,20 @@ async function claimDailyBonus() {
         hideModal();
     }
 }
+
 function inviteFriend() {
     console.log('inviteFriend function called');
     console.log('tg object:', tg);
-    console.log('User ID:', tg.initDataUnsafe.user.id);
+    console.log('User:', tg.initDataUnsafe.user);
     
     const referralLink = `https://t.me/paradox_token_bot?start=ref_${tg.initDataUnsafe.user.id}`;
     const shareText = `Присоединяйся к CryptoVerse Miner! Используй мою реферальную ссылку: ${referralLink}`;
     
     if (tg.initDataUnsafe.user) {
-        tg.shareUrl({
-            url: referralLink,
-            text: shareText
+        tg.MainButton.setText('Поделиться').show();
+        tg.onEvent('mainButtonClicked', function(){
+            tg.sendMessage(shareText);
+            tg.MainButton.hide();
         });
     } else {
         console.log('Telegram WebApp is not available');
@@ -821,3 +823,74 @@ window.addEventListener('beforeunload', () => {
 console.log('Telegram Web App data:', tg.initDataUnsafe);
 
 tg.expand();
+
+// Функция для проверки и обновления состояния кнопки MainButton
+function updateMainButtonState() {
+    if (tg.MainButton.isVisible) {
+        // Если кнопка видима, проверяем, нужно ли ее скрыть
+        if (currentTab !== 'daily') {
+            tg.MainButton.hide();
+        }
+    } else {
+        // Если кнопка скрыта, проверяем, нужно ли ее показать
+        if (currentTab === 'daily') {
+            tg.MainButton.setText('Поделиться').show();
+        }
+    }
+}
+
+// Добавляем вызов этой функции при смене вкладки
+function loadTabContent(tab) {
+    currentTab = tab;
+    switch(tab) {
+        case 'main':
+            showMainTab();
+            break;
+        case 'boosters':
+            showBoostersTab();
+            break;
+        case 'leaderboard':
+            showLeaderboardTab();
+            break;
+        case 'daily':
+            showDailyTab();
+            break;
+    }
+    updateMainButtonState();
+}
+
+// Обновляем функцию inviteFriend
+function inviteFriend() {
+    console.log('inviteFriend function called');
+    console.log('tg object:', tg);
+    console.log('User:', tg.initDataUnsafe.user);
+    
+    const referralLink = `https://t.me/paradox_token_bot?start=ref_${tg.initDataUnsafe.user.id}`;
+    const shareText = `Присоединяйся к CryptoVerse Miner! Используй мою реферальную ссылку: ${referralLink}`;
+    
+    if (tg.initDataUnsafe.user) {
+        tg.MainButton.setText('Поделиться').show();
+        tg.MainButton.onClick(() => {
+            tg.sendMessage(shareText);
+        });
+    } else {
+        console.log('Telegram WebApp is not available');
+        showNotification('Не удалось открыть меню отправки. Попробуйте еще раз.');
+    }
+}
+
+// Добавляем обработчик события для кнопки "Пригласить"
+function attachDailyTasksEventListeners() {
+    document.getElementById('dailyBonusButton').addEventListener('click', showDailyBonusModal);
+    document.getElementById('inviteFriendButton').addEventListener('click', () => {
+        if (tg.MainButton.isVisible) {
+            tg.MainButton.onClick(inviteFriend);
+        } else {
+            inviteFriend();
+        }
+    });
+    document.getElementById('submitVideoButton').addEventListener('click', submitVideo);
+}
+
+// Инициализация Telegram Web App
+tg.ready();
