@@ -826,26 +826,7 @@ tg.expand();
 // Инициализация Telegram Web App
 tg.ready();
 
-// Функция для обновления высоты контента
-function updateContentHeight() {
-    const mainContent = document.getElementById('mainContent');
-    const tabBar = document.getElementById('tabBar');
-    const windowHeight = window.innerHeight;
-    const tabBarHeight = tabBar.offsetHeight;
-    mainContent.style.height = `${windowHeight - tabBarHeight}px`;
-}
 
-// Вызываем функцию при загрузке и изменении размера окна
-window.addEventListener('load', updateContentHeight);
-window.addEventListener('resize', updateContentHeight);
-
-// Обновляем функцию initUI
-function initUI() {
-    showMainTab();
-    updateUI();
-    initTabButtons();
-    updateContentHeight();
-}
 
 
 document.head.appendChild(style);
