@@ -518,33 +518,26 @@ async function claimDailyBonus() {
 
 function inviteFriend() {
     console.log('inviteFriend function called');
-    console.log('tg object:', tg);
-    console.log('User ID:', tg.initDataUnsafe.user.id);
-
-    const referralLink = `https://t.me/paradox_token_bot?start=ref_${tg.initDataUnsafe.user.id}`;
     
-    if (tg.initDataUnsafe.user.id) {
+    const referralLink = `https://t.me/paradox_token_bot?start=ref_${tg.initDataUnsafe.user.id}`;
+    const shareText = `Присоединяйся к CryptoVerse Miner! Используй мою реферальную ссылку: ${referralLink}`;
+    
+    if (tg.initDataUnsafe.user) {
         tg.showPopup({
             title: 'Пригласить друга',
-            message: 'Хотите отправить приглашение другу?',
+            message: 'Отправьте это сообщение своим друзьям:',
             buttons: [
-                {id: 'share', type: 'default', text: 'Поделиться'},
+                {id: 'share', type: 'default', text: 'Отправить'},
                 {id: 'cancel', type: 'cancel', text: 'Отмена'}
             ]
         }, (buttonId) => {
             if (buttonId === 'share') {
-                tg.sendMessage(referralLink);
-                showNotification('Ссылка для приглашения отправлена');
+                tg.sendMessage(shareText);
             }
         });
     } else {
-        console.log('Falling back to clipboard copy');
-        navigator.clipboard.writeText(referralLink).then(() => {
-            showNotification('Реферальная ссылка скопирована в буфер обмена');
-        }).catch(err => {
-            console.error('Ошибка копирования: ', err);
-            showNotification('Не удалось скопировать ссылку. Попробуйте еще раз.');
-        });
+        console.log('Telegram WebApp is not available');
+        showNotification('Не удалось открыть меню отправки. Попробуйте еще раз.');
     }
 }
 
