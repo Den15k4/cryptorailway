@@ -526,19 +526,10 @@ function inviteFriend() {
     const referralLink = `https://t.me/paradox_token_bot?start=ref_${tg.initDataUnsafe.user.id}`;
     
     if (tg.initDataUnsafe.user.id) {
-        tg.showPopup({
-            title: 'Пригласить друга',
-            message: 'Хотите отправить приглашение другу?',
-            buttons: [
-                {id: 'share', type: 'default', text: 'Поделиться'},
-                {id: 'cancel', type: 'cancel', text: 'Отмена'}
-            ]
-        }, (buttonId) => {
-            if (buttonId === 'share') {
-                tg.sendMessage(referralLink);
-                showNotification('Ссылка для приглашения отправлена');
-            }
+        tg.ShareButton.onClick(() => {
+            tg.sendMessage(referralLink);
         });
+        tg.MainButton.setText('Поделиться').show();
     } else {
         console.log('Falling back to clipboard copy');
         navigator.clipboard.writeText(referralLink).then(() => {
