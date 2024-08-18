@@ -512,18 +512,31 @@ async function claimDailyBonus() {
         console.error('Error claiming daily bonus:', error);
         showNotification("Произошла ошибка при получении ежедневного бонуса. Попробуйте позже.");
     } finally {
-        hideModal(); // Закрываем модальное окно в любом случае
+        hideModal();
     }
 }
 
 function inviteFriend() {
+    console.log('inviteFriend function called');
+    console.log('tg object:', tg);
+    console.log('User ID:', tg.initDataUnsafe.user.id);
+
     const referralLink = `https://t.me/paradox_token_bot?start=ref_${tg.initDataUnsafe.user.id}`;
     
     if (tg.initDataUnsafe.user.id) {
-        tg.ShareButton.onClick(() => {
-            tg.sendMessage(referralLink);
+        tg.showPopup({
+            title: 'Пригласить друга',
+            message: 'Хотите отправить приглашение другу?',
+            buttons: [
+                {id: 'share', type: 'default', text: 'Поделиться'},
+                {id: 'cancel', type: 'cancel', text: 'Отмена'}
+            ]
+        }, (buttonId) => {
+            if (buttonId === 'share') {
+                tg.sendMessage(referralLink);
+                showNotification('Ссылка для приглашения отправлена');
+            }
         });
-        tg.MainButton.setText('Поделиться').show();
     } else {
         console.log('Falling back to clipboard copy');
         navigator.clipboard.writeText(referralLink).then(() => {
