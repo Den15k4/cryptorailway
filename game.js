@@ -528,8 +528,8 @@ function inviteFriend() {
     console.log('tg object:', tg);
     console.log('User:', tg.initDataUnsafe.user);
     
-    const referralLink = `https://t.me/paradox_token_bot?start=ref_${tg.initDataUnsafe.user.id}`;
-    const shareText = encodeURIComponent(`Присоединяйся к CryptoVerse Miner! Используй мою реферальную ссылку: ${referralLink}`);
+    const referralLink = `https://t.me/paradox_token_bot/paradox?start=ref_${tg.initDataUnsafe.user.id}`;
+    const shareText = encodeURIComponent(`Присоединяйся к CryptoVerse Miner! Заходи и начинай майнить!`);
     const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${shareText}`;
     
     window.open(shareUrl, '_blank');
