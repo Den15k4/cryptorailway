@@ -65,6 +65,7 @@ function initUI() {
     showMainTab();
     updateUI();
     initTabButtons();
+    enableScrolling();
 }
 
 function initTabButtons() {
@@ -77,6 +78,12 @@ function initTabButtons() {
             loadTabContent(tab);
         });
     });
+}
+
+function enableScrolling() {
+    const mainContent = document.getElementById('mainContent');
+    mainContent.style.overflowY = 'auto';
+    mainContent.style.maxHeight = 'calc(100vh - 60px)'; // Высота экрана минус высота нижней панели
 }
 
 function formatNumber(num) {
@@ -521,39 +528,11 @@ function inviteFriend() {
     console.log('tg object:', tg);
     console.log('User:', tg.initDataUnsafe.user);
     
-    const referralLink = `https://t.me/share/url?url=https://t.me/paradox_token_bot?start=ref_$%7Btg.initDataUnsafe.user.id%7D&text=%D0%BF%D1%80%D0%B8%D0%B2%D0%B5%D1%82%20%D0%BF%D1%80%D0%B8%D0%B2%D0%B5%D1%82%20%D0%BF%D1%80%D0%B8%D0%B2%D0%B5%D1%82`;
+    const referralLink = `https://t.me/paradox_token_bot?start=ref_${tg.initDataUnsafe.user.id}`;
+    const shareText = encodeURIComponent(`Присоединяйся к CryptoVerse Miner! Используй мою реферальную ссылку: ${referralLink}`);
+    const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${shareText}`;
     
-    if (tg.initDataUnsafe.user) {
-        tg.showPopup({
-            title: 'Пригласить друга',
-            message: 'Отправьте это сообщение своим друзьям:',
-            buttons: [
-                {id: 'share', type: 'default', text: 'Отправить'},
-                {id: 'cancel', type: 'cancel', text: 'Отмена'}
-            ]
-        }, (buttonId) => {
-            if (buttonId === 'share') {
-                tg.sendMessage(shareText);
-            }
-        });
-    } else {
-        console.log('Telegram WebApp is not available');
-        // Fallback для браузеров или если Telegram WebApp недоступен
-        if (navigator.share) {
-            navigator.share({
-                title: 'CryptoVerse Miner',
-                text: shareText,
-                url: referralLink
-            }).catch(err => console.log('Error sharing:', err));
-        } else {
-            navigator.clipboard.writeText(shareText).then(() => {
-                showNotification('Реферальная ссылка скопирована в буфер обмена');
-            }).catch(err => {
-                console.error('Ошибка копирования:', err);
-                showNotification('Не удалось скопировать ссылку. Попробуйте еще раз.');
-            });
-        }
-    }
+    window.open(shareUrl, '_blank');
 }
 
 function checkReferral() {
@@ -846,3 +825,42 @@ tg.expand();
 
 // Инициализация Telegram Web App
 tg.ready();
+
+// Функция для обновления высоты контента
+function updateContentHeight() {
+    const mainContent = document.getElementById('mainContent');
+    const tabBar = document.getElementById('tabBar');
+    const windowHeight = window.innerHeight;
+    const tabBarHeight = tabBar.offsetHeight;
+    mainContent.style.height = `${windowHeight - tabBarHeight}px`;
+}
+
+// Вызываем функцию при загрузке и изменении размера окна
+window.addEventListener('load', updateContentHeight);
+window.addEventListener('resize', updateContentHeight);
+
+// Обновляем функцию initUI
+function initUI() {
+    showMainTab();
+    updateUI();
+    initTabButtons();
+    updateContentHeight();
+}
+
+// Добавляем стили для прокрутки
+const style = document.createElement('style');
+style.textContent = `
+    #mainContent {
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    #tabBar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: var(--bg-color);
+        z-index: 1000;
+    }
+`;
+document.head.appendChild(style);
