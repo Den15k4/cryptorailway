@@ -17,12 +17,13 @@ let game = {
 
 let saveGameTimeout;
 let currentTab = 'main';
+
 function isMobileDevice() {
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 }
 
 function showQRCode() {
-    const qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://t.me/paradox_token_bot/paradox";
+    const qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://t.me/paradox_token_bot";
     document.body.innerHTML = `
         <div id="qrCodeContainer">
             <h2>$PARADOX Miner</h2>
@@ -30,13 +31,6 @@ function showQRCode() {
             <img src="${qrCodeUrl}" alt="QR Code" id="qrcode">
         </div>
     `;
-}
-
-if (!isMobileDevice()) {
-    showQRCode();
-} else {
-    // Initialize your app here
-    initGame();
 }
 
 function updateLoadingProgress(progress) {
@@ -53,7 +47,7 @@ function showLoadingScreen() {
 
 function hideLoadingScreen() {
     document.getElementById('loading-screen').style.display = 'none';
-    document.getElementById('app').style.display = 'block';
+    document.getElementById('app').style.display = 'flex';
 }
 
 async function initGame() {
@@ -77,7 +71,7 @@ async function initGame() {
         initParticles();
     } catch (error) {
         console.error('Error during game initialization:', error);
-        showNotification('Произошла ошибка при загрузке игры. Пожалуйста, обновите страницу.');
+        showNotification('An error occurred while loading the game. Please refresh the page.');
         hideLoadingScreen();
     }
 }
@@ -86,7 +80,6 @@ function initUI() {
     showMainTab();
     updateUI();
     initTabButtons();
-    enableScrolling();
 }
 
 function initTabButtons() {
@@ -99,12 +92,6 @@ function initTabButtons() {
             loadTabContent(tab);
         });
     });
-}
-
-function enableScrolling() {
-    const mainContent = document.getElementById('mainContent');
-    mainContent.style.overflowY = 'auto';
-    mainContent.style.maxHeight = 'calc(100vh - 60px)'; // Высота экрана минус высота нижней панели
 }
 
 function formatNumber(num) {
@@ -159,7 +146,7 @@ async function loadGame() {
         }
     } catch (error) {
         console.error('Error loading game:', error);
-        showNotification('Произошла ошибка при загрузке игры. Пожалуйста, попробуйте еще раз.');
+        showNotification('An error occurred while loading the game. Please try again.');
     }
 }
 
@@ -197,7 +184,7 @@ async function saveGame() {
         saveGameToLocalStorage();
     } catch (error) {
         console.error('Error saving game:', error);
-        showNotification('Не удалось сохранить прогресс. Автоматическая попытка через 5 секунд...');
+        showNotification('Failed to save progress. Automatic attempt in 5 seconds...');
         setTimeout(() => saveGame(), 5000);
     }
 }
@@ -311,23 +298,23 @@ async function showLeaderboardTab() {
         }
     } catch (error) {
         console.error('Error fetching leaderboard:', error);
-        document.getElementById('mainContent').innerHTML = `<p>Ошибка при загрузке таблицы лидеров: ${error.message}</p>`;
+        document.getElementById('mainContent').innerHTML = `<p>Error loading leaderboard: ${error.message}</p>`;
     }
 }
 
 async function updateLeaderboardUI(leaderboardData) {
     let content = `
-        <h2>Топ игроков</h2>
+        <h2>Top Players</h2>
         <div id="leaderboard">
             <table>
-                <tr><th>Место</th><th>Ник</th><th>Счет</th></tr>
+                <tr><th>Rank</th><th>Username</th><th>Score</th></tr>
     `;
 
     leaderboardData.forEach((player, index) => {
         content += `
             <tr>
                 <td>${index + 1}</td>
-                <td><img src="icon_button/telegram-icon.png" alt="Telegram" class="telegram-icon">${player.username || 'Аноним'}</td>
+                <td><img src="icon_button/telegram-icon.png" alt="Telegram" class="telegram-icon">${player.username || 'Anonymous'}</td>
                 <td>${formatNumber(player.balance)}</td>
             </tr>
         `;
@@ -343,13 +330,13 @@ async function updateLeaderboardUI(leaderboardData) {
         if (rankResponse.ok) {
             const rankData = await rankResponse.json();
             const displayRank = rankData.rank > 100 ? '100+' : rankData.rank;
-            content += `<p>Ваше место: ${displayRank}</p>`;
+            content += `<p>Your rank: ${displayRank}</p>`;
         } else {
             throw new Error('Failed to fetch player rank');
         }
     } catch (error) {
         console.error('Error fetching player rank:', error);
-        content += `<p>Ваше место: N/A</p>`;
+        content += `<p>Your rank: N/A</p>`;
     }
 
     document.getElementById('mainContent').innerHTML = content;
@@ -398,7 +385,7 @@ function updateReferralsList() {
         referralsListItems.innerHTML = '';
         game.referrals.forEach(referral => {
             const li = document.createElement('li');
-            li.textContent = `${referral.username} - ${formatNumber(referral.minedAmount)} монет`;
+            li.textContent = `${referral.username} - ${formatNumber(referral.minedAmount)} coins`;
             referralsListItems.appendChild(li);
         });
     }
@@ -424,7 +411,7 @@ function loadTabContent(tab) {
 
 async function claim() {
     if (game.currentMining < 0.1) {
-        showNotification("Недостаточно крипто для сбора. Минимум 0.1");
+        showNotification("Not enough crypto to collect. Minimum 0.1");
         return;
     }
     try {
@@ -445,8 +432,8 @@ async function claim() {
             
             updateUI();
             showClaimEffect();
-            showNotification("Крипто успешно собрано!");
-            sendMessageToBot(`Пользователь ${tg.initDataUnsafe.user.username} собрал ${formatNumber(data.amount)} монет!`);
+            showNotification("Crypto successfully collected!");
+            sendMessageToBot(`User ${tg.initDataUnsafe.user.username} collected ${formatNumber(data.amount)} coins!`);
             await updateLeaderboard();
             await saveGame();
             tg.HapticFeedback.impactOccurred('medium');
@@ -455,7 +442,7 @@ async function claim() {
         }
     } catch (error) {
         console.error('Error claiming mining:', error);
-        showNotification("Произошла ошибка при сборе крипто. Попробуйте еще раз.");
+        showNotification("An error occurred while collecting crypto. Please try again.");
     }
 }
 
@@ -478,10 +465,10 @@ function showNotification(message) {
 async function showSubscribeModal(channelLink, channelIndex) {
     const modalContent = `
         <div class="subscribe-modal">
-            <h3>Подписка на канал</h3>
-            <p>Для получения ускорителя, подпишитесь на канал:</p>
-            <a href="${channelLink}" target="_blank" class="subscribe-link" id="subscribeLink">Перейти на канал</a>
-            <button id="checkSubscriptionButton" class="check-subscription" disabled>Проверить подписку</button>
+            <h3>Channel Subscription</h3>
+            <p>To get a booster, subscribe to the channel:</p>
+            <a href="${channelLink}" target="_blank" class="subscribe-link" id="subscribeLink">Go to Channel</a>
+            <button id="checkSubscriptionButton" class="check-subscription" disabled>Check Subscription</button>
         </div>
     `;
     showModal(modalContent);
@@ -501,18 +488,18 @@ async function checkSubscription(channelIndex) {
             if (!game.subscribedChannels.includes(channelIndex)) {
                 game.subscribedChannels.push(channelIndex);
                 game.miningRate += 0.003;
-                showNotification("Ускоритель активирован! +0.003 к скорости добычи");
+                showNotification("Booster activated! +0.003 to mining speed");
                 updateUI();
                 await saveGame();
             } else {
-                showNotification("Вы уже активировали этот ускоритель.");
+                showNotification("You have already activated this booster.");
             }
         } else {
             throw new Error('Failed to check subscription');
         }
     } catch (error) {
         console.error('Error checking subscription:', error);
-        showNotification("Произошла ошибка при проверке подписки. Попробуйте позже.");
+        showNotification("An error occurred while checking the subscription. Please try again later.");
     }
     hideModal();
 }
@@ -530,15 +517,15 @@ async function claimDailyBonus() {
             
             localStorage.setItem('lastDailyBonusTime', Date.now().toString());
             
-            showNotification(`Вы получили ежедневный бонус: ${data.bonusAmount} монет!`);
+            showNotification(`You received a daily bonus: ${data.bonusAmount} coins!`);
             updateUI();
             await saveGame();
         } else {
-            showNotification(data.error || "Не удалось получить ежедневный бонус. Попробуйте позже.");
+            showNotification(data.error || "Failed to get daily bonus. Please try again later.");
         }
     } catch (error) {
         console.error('Error claiming daily bonus:', error);
-        showNotification("Произошла ошибка при получении ежедневного бонуса. Попробуйте позже.");
+        showNotification("An error occurred while claiming the daily bonus. Please try again later.");
     } finally {
         hideModal();
     }
@@ -550,7 +537,7 @@ function inviteFriend() {
     console.log('User:', tg.initDataUnsafe.user);
     
     const referralLink = `https://t.me/paradox_token_bot/paradox?start=ref_${tg.initDataUnsafe.user.id}`;
-    const shareText = encodeURIComponent(`Присоединяйся к CryptoVerse Miner! Заходи и начинай майнить!`);
+    const shareText = encodeURIComponent(`Join CryptoVerse Miner! Start mining now!`);
     const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${shareText}`;
     
     window.open(shareUrl, '_blank');
@@ -570,7 +557,7 @@ async function handleReferral(referrerId) {
             method: 'POST'
         });
         if (response.ok) {
-            showNotification('Вы успешно присоединились по реферальной ссылке!');
+            showNotification('You have successfully joined using a referral link!');
         } else {
             const data = await response.json();
             console.error('Failed to process referral:', data.error);
@@ -582,9 +569,9 @@ async function handleReferral(referrerId) {
 
 async function submitVideo() {
     const content = `
-        <h3>Отправить видео</h3>
-        <input type="text" id="videoLink" placeholder="Вставьте ссылку на видео">
-        <button id="submitVideoLinkButton" class="daily-button">Отправить</button>
+        <h3>Submit Video</h3>
+        <input type="text" id="videoLink" placeholder="Paste video link here">
+        <button id="submitVideoLinkButton" class="daily-button">Submit</button>
     `;
     showModal(content);
     document.getElementById('submitVideoLinkButton').addEventListener('click', async () => {
@@ -602,21 +589,21 @@ async function submitVideo() {
                     const data = await response.json();
                     game.balance += data.reward;
                     game.lastVideoSubmission = Date.now();
-                    showNotification(`Видео принято! Вы получили ${data.reward} монет.`);
+                    showNotification(`Video accepted! You received ${data.reward} coins.`);
                     updateUI();
                     await saveGame();
                     await updateLeaderboard();
                     hideModal();
                 } else {
                     const errorData = await response.json();
-                    showNotification(errorData.error || "Произошла ошибка при отправке видео.");
+                    showNotification(errorData.error || "An error occurred while submitting the video.");
                 }
             } catch (error) {
                 console.error('Error submitting video:', error);
-                showNotification("Произошла ошибка при отправке видео. Попробуйте позже.");
+                showNotification("An error occurred while submitting the video. Please try again later.");
             }
         } else {
-            showNotification("Пожалуйста, введите ссылку на видео.");
+            showNotification("Please enter a video link.");
         }
     });
 }
@@ -643,7 +630,7 @@ function hideModal() {
 }
 
 let lastClickTime = 0;
-const clickCooldown = 100; // 100 мс между кликами
+const clickCooldown = 100; // 100 ms between clicks
 
 function handleManualMining(event) {
     const now = Date.now();
@@ -734,11 +721,11 @@ function initParticles() {
     particlesJS("particles-js", {
         particles: {
             number: { value: 150, density: { enable: true, value_area: 800 } },
-            color: { value: "#8774e1" },
+            color: { value: "#ffffff" },
             shape: { type: "circle", stroke: { width: 0, color: "#000000" }, polygon: { nb_sides: 5 } },
-            opacity: { value: 0.8, random: true, anim: { enable: true, speed: 1, opacity_min: 0.1, sync: false } },
-            size: { value: 5, random: true, anim: { enable: true, speed: 3, size_min: 0.1, sync: false } },
-            line_linked: { enable: true, distance: 150, color: "#8774e1", opacity: 0.6, width: 1.5 },
+            opacity: { value: 0.5, random: true, anim: { enable: true, speed: 1, opacity_min: 0.1, sync: false } },
+            size: { value: 3, random: true, anim: { enable: true, speed: 3, size_min: 0.1, sync: false } },
+            line_linked: { enable: true, distance: 150, color: "#ffffff", opacity: 0.4, width: 1 },
             move: { enable: true, speed: 6, direction: "none", random: true, straight: false, out_mode: "out", bounce: false, attract: { enable: false, rotateX: 600, rotateY: 1200 } }
         },
         interactivity: {
@@ -752,17 +739,20 @@ function initParticles() {
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log('DOMContentLoaded event fired');
-    initGame().catch(error => {
-        console.error('Failed to initialize game:', error);
-        showNotification('Произошла ошибка при загрузке игры. Пожалуйста, обновите страницу.');
-    });
-    document.body.addEventListener('click', (event) => {
-        if (event.target.closest('#miningContainer')) {
-            handleManualMining(event);
-        }
-    });
-    
-    initTabButtons();
+    if (isMobileDevice()) {
+        initGame().catch(error => {
+            console.error('Failed to initialize game:', error);
+            showNotification('An error occurred while loading the game. Please refresh the page.');
+        });
+        document.body.addEventListener('click', (event) => {
+            if (event.target.closest('#miningContainer')) {
+                handleManualMining(event);
+            }
+        });
+        initTabButtons();
+    } else {
+        showQRCode();
+    }
 });
 
 function updateGameState() {
@@ -771,9 +761,9 @@ function updateGameState() {
     updateUI();
 }
 
-// Оптимизированное сохранение игры
+// Optimized game saving
 let lastSaveTime = 0;
-const saveInterval = 30000; // 30 секунд
+const saveInterval = 30000; // 30 seconds
 
 function smartSaveGame() {
     const now = Date.now();
@@ -783,15 +773,15 @@ function smartSaveGame() {
     }
 }
 
-// Измените интервал обновления
+// Change update interval
 setInterval(() => {
     updateGameState();
     smartSaveGame();
 }, 1000);
 
-// Оптимизированное обновление состояния игры
+// Optimized game state update
 let lastUpdateTime = 0;
-const updateInterval = 30000; // 30 секунд
+const updateInterval = 30000; // 30 seconds
 
 async function smartFetchGameState() {
     const now = Date.now();
@@ -818,12 +808,12 @@ async function syncWithServer() {
         console.log('Game synced successfully');
     } catch (error) {
         console.error('Error syncing game:', error);
-        showNotification('Не удалось синхронизировать прогресс. Автоматическая попытка через 5 секунд...');
+        showNotification('Failed to synchronize progress. Automatic attempt in 5 seconds...');
         setTimeout(syncWithServer, 5000);
     }
 }
 
-// Вызывайте эту функцию периодически, например, каждые 5 минут
+// Call this function periodically, for example, every 5 minutes
 setInterval(syncWithServer, 5 * 60 * 1000);
 
 function debugMining() {
@@ -834,7 +824,7 @@ function debugMining() {
     console.log('Current time:', new Date());
 }
 
-// Вызовем функцию отладки каждые 10 секунд
+// Call the debug function every 10 seconds
 setInterval(debugMining, 10000);
 
 window.addEventListener('beforeunload', () => {
@@ -845,10 +835,113 @@ console.log('Telegram Web App data:', tg.initDataUnsafe);
 
 tg.expand();
 
-// Инициализация Telegram Web App
+// Initialize Telegram Web App
 tg.ready();
 
+// Function to update content height
+function updateContentHeight() {
+    const mainContent = document.getElementById('mainContent');
+    const tabBar = document.getElementById('tabBar');
+    const windowHeight = window.innerHeight;
+    const tabBarHeight = tabBar.offsetHeight;
+    mainContent.style.height = `${windowHeight - tabBarHeight}px`;
+}
 
+// Call the function on load and window resize
+window.addEventListener('load', updateContentHeight);
+window.addEventListener('resize', updateContentHeight);
 
+// Update initUI function
+function initUI() {
+    showMainTab();
+    updateUI();
+    initTabButtons();
+    updateContentHeight();
+}
 
+// Add styles for scrolling
+const style = document.createElement('style');
+style.textContent = `
+    #mainContent {
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    #tabBar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: var(--bg-color);
+        z-index: 1000;
+    }
+`;
 document.head.appendChild(style);
+
+// Function to add vibration to the daily bonus claim button
+function addVibrationToDailyBonus() {
+    const claimButton = document.getElementById('claimDailyBonus');
+    if (claimButton) {
+        claimButton.addEventListener('click', () => {
+            if ('vibrate' in navigator) {
+                navigator.vibrate(200); // Vibrate for 200ms
+            }
+        });
+    }
+}
+
+// Update showDailyBonusModal function to include vibration
+function showDailyBonusModal() {
+    // ... existing code ...
+
+    showModal(modalContent);
+    document.getElementById('claimDailyBonus').addEventListener('click', claimDailyBonus);
+    addVibrationToDailyBonus();
+}
+
+// Function to check if the device is in portrait mode
+function isPortrait() {
+    return window.innerHeight > window.innerWidth;
+}
+
+// Function to show a warning if the device is not in portrait mode
+function checkOrientation() {
+    if (!isPortrait()) {
+        showNotification('Please rotate your device to portrait mode for the best experience.');
+    }
+}
+
+// Check orientation on load and orientation change
+window.addEventListener('load', checkOrientation);
+window.addEventListener('orientationchange', checkOrientation);
+
+// Update game state every second
+setInterval(updateGameState, 1000);
+
+// Sync with server every 5 minutes
+setInterval(syncWithServer, 5 * 60 * 1000);
+
+// Initialize the game if it's a mobile device, otherwise show QR code
+if (isMobileDevice()) {
+    initGame().catch(error => {
+        console.error('Failed to initialize game:', error);
+        showNotification('An error occurred while loading the game. Please refresh the page.');
+    });
+} else {
+    showQRCode();
+}
+
+// Export necessary functions for testing
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        isMobileDevice,
+        showQRCode,
+        initGame,
+        updateUI,
+        claim,
+        inviteFriend,
+        submitVideo,
+        showDailyBonusModal,
+        updateGameState,
+        syncWithServer
+    };
+}
