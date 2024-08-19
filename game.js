@@ -17,6 +17,27 @@ let game = {
 
 let saveGameTimeout;
 let currentTab = 'main';
+function isMobileDevice() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
+
+function showQRCode() {
+    const qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://t.me/paradox_token_bot/paradox";
+    document.body.innerHTML = `
+        <div id="qrCodeContainer">
+            <h2>$PARADOX Miner</h2>
+            <p>This app is only available on mobile devices. Scan the QR code to open the bot on your phone:</p>
+            <img src="${qrCodeUrl}" alt="QR Code" id="qrcode">
+        </div>
+    `;
+}
+
+if (!isMobileDevice()) {
+    showQRCode();
+} else {
+    // Initialize your app here
+    initGame();
+}
 
 function updateLoadingProgress(progress) {
     const progressBar = document.getElementById('progress');
