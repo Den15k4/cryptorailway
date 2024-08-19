@@ -17,25 +17,28 @@ let game = {
 
 let saveGameTimeout;
 let currentTab = 'main';
-
-// Функция для проверки, является ли устройство мобильным
 function isMobileDevice() {
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 }
 
-// Функция для отображения QR-кода
 function showQRCode() {
-    const qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://t.me/paradox_token_bot";
+    const qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://t.me/paradox_token_bot/paradox";
     document.body.innerHTML = `
         <div id="qrCodeContainer">
             <h2>$PARADOX Miner</h2>
-            <p>Это приложение доступно только на мобильных устройствах. Отсканируйте QR-код, чтобы открыть бота на вашем телефоне:</p>
+            <p>This app is only available on mobile devices. Scan the QR code to open the bot on your phone:</p>
             <img src="${qrCodeUrl}" alt="QR Code" id="qrcode">
         </div>
     `;
 }
 
-// Функция обновления прогресса загрузки
+if (!isMobileDevice()) {
+    showQRCode();
+} else {
+    // Initialize your app here
+    initGame();
+}
+
 function updateLoadingProgress(progress) {
     const progressBar = document.getElementById('progress');
     if (progressBar) {
@@ -43,19 +46,16 @@ function updateLoadingProgress(progress) {
     }
 }
 
-// Функция отображения экрана загрузки
 function showLoadingScreen() {
     document.getElementById('loading-screen').style.display = 'flex';
     document.getElementById('app').style.display = 'none';
 }
 
-// Функция скрытия экрана загрузки
 function hideLoadingScreen() {
     document.getElementById('loading-screen').style.display = 'none';
-    document.getElementById('app').style.display = 'flex';
+    document.getElementById('app').style.display = 'block';
 }
 
-// Функция инициализации игры
 async function initGame() {
     try {
         showLoadingScreen();
@@ -82,14 +82,13 @@ async function initGame() {
     }
 }
 
-// Функция инициализации пользовательского интерфейса
 function initUI() {
     showMainTab();
     updateUI();
     initTabButtons();
+    enableScrolling();
 }
 
-// Функция инициализации кнопок вкладок
 function initTabButtons() {
     const tabButtons = document.querySelectorAll('.tab-button');
     tabButtons.forEach(button => {
@@ -102,7 +101,12 @@ function initTabButtons() {
     });
 }
 
-// Функция форматирования чисел
+function enableScrolling() {
+    const mainContent = document.getElementById('mainContent');
+    mainContent.style.overflowY = 'auto';
+    mainContent.style.maxHeight = 'calc(100vh - 60px)'; // Высота экрана минус высота нижней панели
+}
+
 function formatNumber(num) {
     if (num === null || isNaN(num)) {
         return '0.000';
@@ -115,7 +119,6 @@ function formatNumber(num) {
     return num.toFixed(3);
 }
 
-// Функция загрузки игры
 async function loadGame() {
     try {
         const savedGame = localStorage.getItem('gameState');
@@ -160,12 +163,10 @@ async function loadGame() {
     }
 }
 
-// Функция сохранения игры в локальное хранилище
 function saveGameToLocalStorage() {
     localStorage.setItem('gameState', JSON.stringify(game));
 }
 
-// Функция сохранения игры на сервере
 async function saveGame() {
     try {
         const gameData = {
@@ -201,7 +202,6 @@ async function saveGame() {
     }
 }
 
-// Функция обновления состояния игры
 async function fetchGameState() {
     try {
         const response = await fetch(`/api/game-state/${tg.initDataUnsafe.user.id}`);
@@ -218,7 +218,6 @@ async function fetchGameState() {
     }
 }
 
-// Функция обновления таблицы лидеров
 async function updateLeaderboard() {
     if (currentTab === 'leaderboard') {
         try {
@@ -235,7 +234,6 @@ async function updateLeaderboard() {
     }
 }
 
-// Функция обновления майнинга
 function updateMining() {
     const now = Date.now();
     const timePassed = now - game.lastClaimTime;
@@ -248,7 +246,6 @@ function updateMining() {
     updateUI();
 }
 
-// Функция обновления пользовательского интерфейса
 function updateUI() {
     const miningRateElement = document.getElementById('miningRateValue');
     if (miningRateElement) {
@@ -266,7 +263,6 @@ function updateUI() {
     }
 }
 
-// Функция отображения главной вкладки
 function showMainTab() {
     const content = `
         <div id="miningContainer">
@@ -287,24 +283,20 @@ function showMainTab() {
     document.getElementById('claimButton').addEventListener('click', claim);
 }
 
-// Функция отображения вкладки бустеров
 function showBoostersTab() {
     const content = `
         <h2>Boosters</h2>
-        <div class="boosters-grid">
-            ${Array.from({ length: 10 }, (_, i) => `
-                <button id="subscribeButton${i + 1}" class="booster-button">Booster ${i + 1}</button>
-            `).join('')}
-        </div>
+        <button id="subscribeButton1" class="booster-button">Subscribe to Channel 1</button>
+        <button id="subscribeButton2" class="booster-button">Subscribe to Channel 2</button>
+        <button id="subscribeButton3" class="booster-button">Subscribe to Channel 3</button>
     `;
     document.getElementById('mainContent').innerHTML = content;
     
-    for (let i = 1; i <= 10; i++) {
-        document.getElementById(`subscribeButton${i}`).addEventListener('click', () => showSubscribeModal(`https://t.me/channel${i}`, i - 1));
-    }
+    document.getElementById('subscribeButton1').addEventListener('click', () => showSubscribeModal('https://t.me/never_sol', 0));
+    document.getElementById('subscribeButton2').addEventListener('click', () => showSubscribeModal('https://t.me/channel2', 1));
+    document.getElementById('subscribeButton3').addEventListener('click', () => showSubscribeModal('https://t.me/channel3', 2));
 }
 
-// Функция отображения вкладки таблицы лидеров
 async function showLeaderboardTab() {
     try {
         const response = await fetch('/api/leaderboard');
@@ -319,24 +311,23 @@ async function showLeaderboardTab() {
         }
     } catch (error) {
         console.error('Error fetching leaderboard:', error);
-        document.getElementById('mainContent').innerHTML = `<p>Error loading leaderboard: ${error.message}</p>`;
+        document.getElementById('mainContent').innerHTML = `<p>Ошибка при загрузке таблицы лидеров: ${error.message}</p>`;
     }
 }
 
-// Функция обновления UI таблицы лидеров
 async function updateLeaderboardUI(leaderboardData) {
     let content = `
-        <h2>Top Players</h2>
+        <h2>Топ игроков</h2>
         <div id="leaderboard">
             <table>
-                <tr><th>Rank</th><th>Username</th><th>Score</th></tr>
+                <tr><th>Место</th><th>Ник</th><th>Счет</th></tr>
     `;
 
     leaderboardData.forEach((player, index) => {
         content += `
             <tr>
                 <td>${index + 1}</td>
-                <td><img src="icon_button/telegram-icon.png" alt="Telegram" class="telegram-icon">${player.username || 'Anonymous'}</td>
+                <td><img src="icon_button/telegram-icon.png" alt="Telegram" class="telegram-icon">${player.username || 'Аноним'}</td>
                 <td>${formatNumber(player.balance)}</td>
             </tr>
         `;
@@ -352,19 +343,18 @@ async function updateLeaderboardUI(leaderboardData) {
         if (rankResponse.ok) {
             const rankData = await rankResponse.json();
             const displayRank = rankData.rank > 100 ? '100+' : rankData.rank;
-            content += `<p>Your rank: ${displayRank}</p>`;
+            content += `<p>Ваше место: ${displayRank}</p>`;
         } else {
             throw new Error('Failed to fetch player rank');
         }
     } catch (error) {
         console.error('Error fetching player rank:', error);
-        content += `<p>Your rank: N/A</p>`;
+        content += `<p>Ваше место: N/A</p>`;
     }
 
     document.getElementById('mainContent').innerHTML = content;
 }
 
-// Функция отображения вкладки ежедневных заданий
 function showDailyTab() {
     const content = `
         <h2>Daily Tasks</h2>
@@ -396,27 +386,24 @@ function showDailyTab() {
     updateReferralsList();
 }
 
-// Функция прикрепления обработчиков событий к ежедневным заданиям
 function attachDailyTasksEventListeners() {
     document.getElementById('dailyBonusButton').addEventListener('click', showDailyBonusModal);
     document.getElementById('inviteFriendButton').addEventListener('click', inviteFriend);
     document.getElementById('submitVideoButton').addEventListener('click', submitVideo);
 }
 
-// Функция обновления списка рефералов
 function updateReferralsList() {
     const referralsListItems = document.getElementById('referralsListItems');
     if (referralsListItems) {
         referralsListItems.innerHTML = '';
         game.referrals.forEach(referral => {
             const li = document.createElement('li');
-            li.textContent = `${referral.username} - ${formatNumber(referral.minedAmount)} coins`;
+            li.textContent = `${referral.username} - ${formatNumber(referral.minedAmount)} монет`;
             referralsListItems.appendChild(li);
         });
     }
 }
 
-// Функция загрузки содержимого вкладки
 function loadTabContent(tab) {
     currentTab = tab;
     switch(tab) {
@@ -435,10 +422,9 @@ function loadTabContent(tab) {
     }
 }
 
-// Функция сбора криптовалюты
 async function claim() {
     if (game.currentMining < 0.1) {
-        showNotification("Not enough crypto to collect. Minimum 0.1");
+        showNotification("Недостаточно крипто для сбора. Минимум 0.1");
         return;
     }
     try {
@@ -459,22 +445,20 @@ async function claim() {
             
             updateUI();
             showClaimEffect();
-            showNotification("Crypto successfully collected!");
-            sendMessageToBot(`User ${tg.initDataUnsafe.user.username} collected ${formatNumber(data.amount)} coins!`);
+            showNotification("Крипто успешно собрано!");
+            sendMessageToBot(`Пользователь ${tg.initDataUnsafe.user.username} собрал ${formatNumber(data.amount)} монет!`);
             await updateLeaderboard();
             await saveGame();
             tg.HapticFeedback.impactOccurred('medium');
         } else {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to claim mining');
+            throw new Error('Failed to claim mining');
         }
     } catch (error) {
         console.error('Error claiming mining:', error);
-        showNotification("An error occurred while collecting crypto. Please try again.");
+        showNotification("Произошла ошибка при сборе крипто. Попробуйте еще раз.");
     }
 }
 
-// Функция отображения эффекта сбора
 function showClaimEffect() {
     gsap.fromTo("#miningContainer", 
         { scale: 1, opacity: 1 },
@@ -482,7 +466,6 @@ function showClaimEffect() {
     );
 }
 
-// Функция отображения уведомления
 function showNotification(message) {
     const notification = document.getElementById('notification');
     notification.textContent = message;
@@ -492,14 +475,13 @@ function showNotification(message) {
     }, 3000);
 }
 
-// Функция отображения модального окна подписки
 async function showSubscribeModal(channelLink, channelIndex) {
     const modalContent = `
         <div class="subscribe-modal">
-            <h3>Channel Subscription</h3>
-            <p>To get a booster, subscribe to the channel:</p>
-            <a href="${channelLink}" target="_blank" class="subscribe-link" id="subscribeLink">Go to Channel</a>
-            <button id="checkSubscriptionButton" class="check-subscription" disabled>Check Subscription</button>
+            <h3>Подписка на канал</h3>
+            <p>Для получения ускорителя, подпишитесь на канал:</p>
+            <a href="${channelLink}" target="_blank" class="subscribe-link" id="subscribeLink">Перейти на канал</a>
+            <button id="checkSubscriptionButton" class="check-subscription" disabled>Проверить подписку</button>
         </div>
     `;
     showModal(modalContent);
@@ -509,7 +491,6 @@ async function showSubscribeModal(channelLink, channelIndex) {
     document.getElementById('checkSubscriptionButton').addEventListener('click', () => checkSubscription(channelIndex));
 }
 
-// Функция проверки подписки
 async function checkSubscription(channelIndex) {
     try {
         const response = await fetch(`/api/subscribe/${tg.initDataUnsafe.user.id}/${channelIndex}`, {
@@ -520,23 +501,22 @@ async function checkSubscription(channelIndex) {
             if (!game.subscribedChannels.includes(channelIndex)) {
                 game.subscribedChannels.push(channelIndex);
                 game.miningRate += 0.003;
-                showNotification("Booster activated! +0.003 to mining speed");
+                showNotification("Ускоритель активирован! +0.003 к скорости добычи");
                 updateUI();
                 await saveGame();
             } else {
-                showNotification("You have already activated this booster.");
+                showNotification("Вы уже активировали этот ускоритель.");
             }
         } else {
             throw new Error('Failed to check subscription');
         }
     } catch (error) {
         console.error('Error checking subscription:', error);
-        showNotification("An error occurred while checking the subscription. Please try again later.");
+        showNotification("Произошла ошибка при проверке подписки. Попробуйте позже.");
     }
     hideModal();
 }
 
-// Функция получения ежедневного бонуса
 async function claimDailyBonus() {
     try {
         const response = await fetch(`/api/daily-bonus/${tg.initDataUnsafe.user.id}`, {
@@ -550,34 +530,32 @@ async function claimDailyBonus() {
             
             localStorage.setItem('lastDailyBonusTime', Date.now().toString());
             
-            showNotification(`You received a daily bonus: ${data.bonusAmount} coins!`);
+            showNotification(`Вы получили ежедневный бонус: ${data.bonusAmount} монет!`);
             updateUI();
             await saveGame();
         } else {
-            showNotification(data.error || "Failed to get daily bonus. Please try again later.");
+            showNotification(data.error || "Не удалось получить ежедневный бонус. Попробуйте позже.");
         }
     } catch (error) {
         console.error('Error claiming daily bonus:', error);
-        showNotification("An error occurred while claiming the daily bonus. Please try again later.");
+        showNotification("Произошла ошибка при получении ежедневного бонуса. Попробуйте позже.");
     } finally {
         hideModal();
     }
 }
 
-// Функция приглашения друга
 function inviteFriend() {
     console.log('inviteFriend function called');
     console.log('tg object:', tg);
     console.log('User:', tg.initDataUnsafe.user);
     
-    const referralLink = `https://t.me/paradox_token_bot?start=ref_${tg.initDataUnsafe.user.id}`;
-    const shareText = encodeURIComponent(`Join CryptoVerse Miner! Start mining now!`);
+    const referralLink = `https://t.me/paradox_token_bot/paradox?start=ref_${tg.initDataUnsafe.user.id}`;
+    const shareText = encodeURIComponent(`Присоединяйся к CryptoVerse Miner! Заходи и начинай майнить!`);
     const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${shareText}`;
     
     window.open(shareUrl, '_blank');
 }
 
-// Функция проверки реферала
 function checkReferral() {
     const urlParams = new URLSearchParams(window.location.search);
     const referralCode = urlParams.get('start');
@@ -586,14 +564,13 @@ function checkReferral() {
     }
 }
 
-// Функция обработки реферала
 async function handleReferral(referrerId) {
     try {
         const response = await fetch(`/api/referral/${tg.initDataUnsafe.user.id}/${referrerId}`, {
             method: 'POST'
         });
         if (response.ok) {
-            showNotification('You have successfully joined using a referral link!');
+            showNotification('Вы успешно присоединились по реферальной ссылке!');
         } else {
             const data = await response.json();
             console.error('Failed to process referral:', data.error);
@@ -603,12 +580,11 @@ async function handleReferral(referrerId) {
     }
 }
 
-// Функция отправки видео
 async function submitVideo() {
     const content = `
-        <h3>Submit Video</h3>
-        <input type="text" id="videoLink" placeholder="Paste video link here">
-        <button id="submitVideoLinkButton" class="daily-button">Submit</button>
+        <h3>Отправить видео</h3>
+        <input type="text" id="videoLink" placeholder="Вставьте ссылку на видео">
+        <button id="submitVideoLinkButton" class="daily-button">Отправить</button>
     `;
     showModal(content);
     document.getElementById('submitVideoLinkButton').addEventListener('click', async () => {
@@ -626,26 +602,25 @@ async function submitVideo() {
                     const data = await response.json();
                     game.balance += data.reward;
                     game.lastVideoSubmission = Date.now();
-                    showNotification(`Video accepted! You received ${data.reward} coins.`);
+                    showNotification(`Видео принято! Вы получили ${data.reward} монет.`);
                     updateUI();
                     await saveGame();
                     await updateLeaderboard();
                     hideModal();
                 } else {
                     const errorData = await response.json();
-                    showNotification(errorData.error || "An error occurred while submitting the video.");
+                    showNotification(errorData.error || "Произошла ошибка при отправке видео.");
                 }
             } catch (error) {
                 console.error('Error submitting video:', error);
-                showNotification("An error occurred while submitting the video. Please try again later.");
+                showNotification("Произошла ошибка при отправке видео. Попробуйте позже.");
             }
         } else {
-            showNotification("Please enter a video link.");
+            showNotification("Пожалуйста, введите ссылку на видео.");
         }
     });
 }
 
-// Функция отображения модального окна
 function showModal(content) {
     const modal = document.createElement('div');
     modal.className = 'modal';
@@ -660,7 +635,6 @@ function showModal(content) {
     modal.querySelector('.close-modal').addEventListener('click', hideModal);
 }
 
-// Функция скрытия модального окна
 function hideModal() {
     const modal = document.querySelector('.modal');
     if (modal) {
@@ -671,7 +645,6 @@ function hideModal() {
 let lastClickTime = 0;
 const clickCooldown = 100; // 100 мс между кликами
 
-// Функция обработки ручного майнинга
 function handleManualMining(event) {
     const now = Date.now();
     if (now - lastClickTime >= clickCooldown) {
@@ -684,7 +657,6 @@ function handleManualMining(event) {
     }
 }
 
-// Функция отображения эффекта ручного майнинга
 function showManualMiningEffect(event) {
     const effect = document.createElement('div');
     effect.className = 'manual-mining-effect';
@@ -694,12 +666,14 @@ function showManualMiningEffect(event) {
     effect.style.top = `${event.clientY}px`;
     document.body.appendChild(effect);
 
-    effect.addEventListener('animationend', () => {
-        document.body.removeChild(effect);
+    gsap.to(effect, {
+        opacity: 0,
+        y: -20,
+        duration: 1,
+        onComplete: () => effect.remove()
     });
 }
 
-// Функция отображения модального окна ежедневного бонуса
 function showDailyBonusModal() {
     const bonusAmounts = [1, 1, 2, 3, 5, 8, 13, 21, 34, 55];
     const currentDay = (game.dailyBonusDay % 10) + 1;
@@ -737,7 +711,6 @@ function showDailyBonusModal() {
     document.getElementById('claimDailyBonus').addEventListener('click', claimDailyBonus);
 }
 
-// Функция отправки сообщения боту
 async function sendMessageToBot(message) {
     try {
         const response = await fetch('/send-message', {
@@ -757,16 +730,15 @@ async function sendMessageToBot(message) {
     }
 }
 
-// Функция инициализации частиц
 function initParticles() {
     particlesJS("particles-js", {
         particles: {
             number: { value: 150, density: { enable: true, value_area: 800 } },
-            color: { value: "#ffffff" },
+            color: { value: "#8774e1" },
             shape: { type: "circle", stroke: { width: 0, color: "#000000" }, polygon: { nb_sides: 5 } },
-            opacity: { value: 0.5, random: true, anim: { enable: true, speed: 1, opacity_min: 0.1, sync: false } },
-            size: { value: 3, random: true, anim: { enable: true, speed: 3, size_min: 0.1, sync: false } },
-            line_linked: { enable: true, distance: 150, color: "#ffffff", opacity: 0.4, width: 1 },
+            opacity: { value: 0.8, random: true, anim: { enable: true, speed: 1, opacity_min: 0.1, sync: false } },
+            size: { value: 5, random: true, anim: { enable: true, speed: 3, size_min: 0.1, sync: false } },
+            line_linked: { enable: true, distance: 150, color: "#8774e1", opacity: 0.6, width: 1.5 },
             move: { enable: true, speed: 6, direction: "none", random: true, straight: false, out_mode: "out", bounce: false, attract: { enable: false, rotateX: 600, rotateY: 1200 } }
         },
         interactivity: {
@@ -778,26 +750,21 @@ function initParticles() {
     });
 }
 
-// Обработчик события загрузки DOM
 document.addEventListener('DOMContentLoaded', () => {
     console.log('DOMContentLoaded event fired');
-    if (isMobileDevice()) {
-        initGame().catch(error => {
-            console.error('Failed to initialize game:', error);
-            showNotification('An error occurred while loading the game. Please refresh the page.');
-        });
-        document.body.addEventListener('click', (event) => {
-            if (event.target.closest('#miningContainer')) {
-                handleManualMining(event);
-            }
-        });
-        initTabButtons();
-    } else {
-        showQRCode();
-    }
+    initGame().catch(error => {
+        console.error('Failed to initialize game:', error);
+        showNotification('Произошла ошибка при загрузке игры. Пожалуйста, обновите страницу.');
+    });
+    document.body.addEventListener('click', (event) => {
+        if (event.target.closest('#miningContainer')) {
+            handleManualMining(event);
+        }
+    });
+    
+    initTabButtons();
 });
 
-// Функция обновления состояния игры
 function updateGameState() {
     updateMining();
     saveGameToLocalStorage();
@@ -816,7 +783,7 @@ function smartSaveGame() {
     }
 }
 
-// Интервал обновления
+// Измените интервал обновления
 setInterval(() => {
     updateGameState();
     smartSaveGame();
@@ -836,7 +803,6 @@ async function smartFetchGameState() {
 
 setInterval(smartFetchGameState, 1000);
 
-// Функция синхронизации с сервером
 async function syncWithServer() {
     try {
         const response = await fetch(`/api/game/${tg.initDataUnsafe.user.id}`, {
@@ -852,15 +818,14 @@ async function syncWithServer() {
         console.log('Game synced successfully');
     } catch (error) {
         console.error('Error syncing game:', error);
-        showNotification('Failed to synchronize progress. Automatic attempt in 5 seconds...');
+        showNotification('Не удалось синхронизировать прогресс. Автоматическая попытка через 5 секунд...');
         setTimeout(syncWithServer, 5000);
     }
 }
 
-// Вызов функции синхронизации каждые 5 минут
+// Вызывайте эту функцию периодически, например, каждые 5 минут
 setInterval(syncWithServer, 5 * 60 * 1000);
 
-// Функция отладки майнинга
 function debugMining() {
     console.log('Current mining:', game.currentMining);
     console.log('Total mined:', game.totalMined);
@@ -869,18 +834,21 @@ function debugMining() {
     console.log('Current time:', new Date());
 }
 
-// Вызов функции отладки каждые 10 секунд
+// Вызовем функцию отладки каждые 10 секунд
 setInterval(debugMining, 10000);
 
-// Обработчик события перед выгрузкой страницы
 window.addEventListener('beforeunload', () => {
     saveGame();
 });
 
 console.log('Telegram Web App data:', tg.initDataUnsafe);
 
-// Расширение Telegram Web App
 tg.expand();
 
 // Инициализация Telegram Web App
 tg.ready();
+
+
+
+
+document.head.appendChild(style);
