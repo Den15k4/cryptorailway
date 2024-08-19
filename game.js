@@ -247,16 +247,16 @@ function showMainTab() {
         <div id="miningContainer">
             <div id="miningStats">
                 <div class="stat">
-                    <p>Добыто</p>
+                    <p>Mined</p>
                     <h2 id="currentMining">${formatNumber(game.currentMining)}</h2>
                 </div>
                 <div class="stat">
-                    <p>Баланс</p>
+                    <p>Balance</p>
                     <h2 id="balanceAmount">${formatNumber(game.balance)}</h2>
                 </div>
             </div>
         </div>
-        <button id="claimButton">Собрать</button>
+        <button id="claimButton">Collect</button>
     `;
     document.getElementById('mainContent').innerHTML = content;
     document.getElementById('claimButton').addEventListener('click', claim);
@@ -264,10 +264,10 @@ function showMainTab() {
 
 function showBoostersTab() {
     const content = `
-        <h2>Ускорители</h2>
-        <button id="subscribeButton1" class="booster-button">Подписаться на канал 1</button>
-        <button id="subscribeButton2" class="booster-button">Подписаться на канал 2</button>
-        <button id="subscribeButton3" class="booster-button">Подписаться на канал 3</button>
+        <h2>Boosters</h2>
+        <button id="subscribeButton1" class="booster-button">Subscribe to Channel 1</button>
+        <button id="subscribeButton2" class="booster-button">Subscribe to Channel 2</button>
+        <button id="subscribeButton3" class="booster-button">Subscribe to Channel 3</button>
     `;
     document.getElementById('mainContent').innerHTML = content;
     
@@ -336,26 +336,26 @@ async function updateLeaderboardUI(leaderboardData) {
 
 function showDailyTab() {
     const content = `
-        <h2>Ежедневные задания</h2>
+        <h2>Daily Tasks</h2>
         <div class="daily-tasks">
             <div class="task">
-                <h3>Ежедневный бонус</h3>
-                <p>Получайте бонус каждый день</p>
-                <button id="dailyBonusButton" class="task-button">Забрать бонус</button>
+                <h3>Daily Bonus</h3>
+                <p>Get a bonus every day</p>
+                <button id="dailyBonusButton" class="task-button">Claim Bonus</button>
             </div>
             <div class="task">
-                <h3>Пригласить друга</h3>
-                <p>Получите награду за каждого приглашенного друга</p>
-                <button id="inviteFriendButton" class="task-button">Пригласить</button>
+                <h3>Invite a Friend</h3>
+                <p>Get a reward for each invited friend</p>
+                <button id="inviteFriendButton" class="task-button">Invite</button>
             </div>
             <div class="task">
-                <h3>Отправить видео</h3>
-                <p>Поделитесь видео и получите награду</p>
-                <button id="submitVideoButton" class="task-button">Отправить</button>
+                <h3>Submit Video</h3>
+                <p>Share a video and get a reward</p>
+                <button id="submitVideoButton" class="task-button">Submit</button>
             </div>
         </div>
         <div id="referralsList">
-            <h3>Приглашенные друзья:</h3>
+            <h3>Invited Friends:</h3>
             <ul id="referralsListItems"></ul>
         </div>
     `;
