@@ -662,11 +662,12 @@ function showDailyBonusModal() {
         const isCurrentDay = i === currentDay;
         const isPastDay = i < currentDay;
         const dayClass = isCurrentDay ? 'current-day' : (isPastDay ? 'past-day' : '');
+        const textColor = isPastDay ? 'color: black;' : '';
         daysHtml += `
             <div class="day-box ${dayClass}">
-                <div class="day-number">День ${i}</div>
+                <div class="day-number" style="${textColor}">Day ${i}</div>
                 <div class="coin-icon"></div>
-                <div class="bonus-amount">${bonusAmounts[i-1]}</div>
+                <div class="bonus-amount" style="${textColor}">${bonusAmounts[i-1]}</div>
             </div>
         `;
     }
@@ -674,13 +675,13 @@ function showDailyBonusModal() {
     const modalContent = `
         <div class="daily-bonus-container">
             <div class="bonus-icon">🎁</div>
-            <h2>Ежедневный буст</h2>
-            <p>Получайте $SWITCH за ежедневный логин,<br>не пропуская ни одного</p>
+            <h2>Daily Boost</h2>
+            <p>Get $SWITCH for daily login,<br>don't miss a day</p>
             <div class="days-grid">
                 ${daysHtml}
             </div>
             <button id="claimDailyBonus" class="claim-button" ${currentDay > 10 ? 'disabled' : ''}>
-                ${currentDay > 10 ? 'Возвращайтесь завтра' : 'Получить бонус'}
+                ${currentDay > 10 ? 'Come back tomorrow' : 'Claim Bonus'}
             </button>
         </div>
     `;

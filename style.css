@@ -66,12 +66,13 @@ h1, h2, h3 {
     flex-grow: 1;
     display: flex;
     flex-direction: column;
-    justify-content: center;
     align-items: center;
     padding: 20px;
     position: relative;
     z-index: 2;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    height: calc(100vh - 120px); /* Adjust based on your header and footer height */
 }
 
 #miningContainer {
@@ -383,6 +384,14 @@ h1, h2, h3 {
 
 .coin-icon::after {
     content: '🪙';
+}
+.past-day {
+    background-color: var(--button-color);
+}
+
+.past-day .day-number,
+.past-day .bonus-amount {
+    color: black;
 }
 
 @supports not (content: '🪙') {
