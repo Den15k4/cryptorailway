@@ -286,13 +286,22 @@ function updateUI() {
       <button id="subscribeButton1" class="booster-button">Subscribe to Channel 1</button>
       <button id="subscribeButton2" class="booster-button">Subscribe to Channel 2</button>
       <button id="subscribeButton3" class="booster-button">Subscribe to Channel 3</button>
+       <button id="subscribeButton4" class="booster-button">Subscribe to Channel 1</button>
+      <button id="subscribeButton5" class="booster-button">Subscribe to Channel 2</button>
+      <button id="subscribeButton6" class="booster-button">Subscribe to Channel 3</button>
+       <button id="subscribeButton7" class="booster-button">Subscribe to Channel 1</button>
+      <button id="subscribeButton8" class="booster-button">Subscribe to Channel 2</button>
+      <button id="subscribeButton9" class="booster-button">Subscribe to Channel 3</button>
     `;
     document.getElementById('mainContent').innerHTML = content;
     
     document.getElementById('subscribeButton1').addEventListener('click', () => showSubscribeModal('https://t.me/never_sol', 0));
     document.getElementById('subscribeButton2').addEventListener('click', () => showSubscribeModal('https://t.me/channel2', 1));
     document.getElementById('subscribeButton3').addEventListener('click', () => showSubscribeModal('https://t.me/channel3', 2));
-  }
+    document.getElementById('subscribeButton4').addEventListener('click', () => showSubscribeModal('https://t.me/never_sol', 0));
+    document.getElementById('subscribeButton5').addEventListener('click', () => showSubscribeModal('https://t.me/channel2', 1));
+    document.getElementById('subscribeButton6').addEventListener('click', () => showSubscribeModal('https://t.me/channel3', 2)); 
+}
 
   async function showLeaderboardTab() {
     try {
