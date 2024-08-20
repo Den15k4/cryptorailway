@@ -352,6 +352,7 @@ function updateUI() {
 
   function showDailyTab() {
     const content = `
+    <div style="margin-top: 20px;">
       <h2>Daily Tasks</h2>
       <div class="daily-tasks">
         <div class="task">
@@ -374,7 +375,8 @@ function updateUI() {
         <h3>Invited Friends:</h3>
         <ul id="referralsListItems"></ul>
       </div>
-      <div style="height: 100px;"></div> <!-- Добавляем пустое пространство для скроллинга -->
+      <div style="height: 100px;"></div>
+      </div> <!-- Добавляем пустое пространство для скроллинга -->
     `;
   
     document.getElementById('mainContent').innerHTML = content;
