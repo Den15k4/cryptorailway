@@ -46,8 +46,16 @@ function showLoadingScreen() {
 }
 
 function hideLoadingScreen() {
-    document.getElementById('loading-screen').style.display = 'none';
-    document.getElementById('app').style.display = 'block';
+    console.log('Hiding loading screen...');
+    const loadingScreen = document.getElementById('loading-screen');
+    const app = document.getElementById('app');
+    if (loadingScreen && app) {
+        loadingScreen.style.display = 'none';
+        app.style.display = 'block';
+        console.log('Loading screen hidden, app displayed.');
+    } else {
+        console.error('Loading screen or app element not found.');
+    }
 }
 
 async function initGame() {
@@ -57,15 +65,19 @@ async function initGame() {
         updateLoadingProgress(10);
         console.log('Loading game data...');
         await loadGame();
+        console.log('Game data loaded successfully');
         updateLoadingProgress(40);
         console.log('Updating leaderboard...');
         await updateLeaderboard();
+        console.log('Leaderboard updated successfully');
         updateLoadingProgress(70);
         console.log('Initializing UI...');
         initUI();
+        console.log('UI initialized successfully');
         updateLoadingProgress(90);
         console.log('Checking referral...');
         checkReferral();
+        console.log('Referral check completed');
         updateLoadingProgress(100);
         console.log('Game initialization complete.');
         setTimeout(() => {
@@ -164,7 +176,7 @@ async function loadGame() {
     } catch (error) {
         console.error('Error in loadGame function:', error);
         showNotification('Произошла ошибка при загрузке игры. Пожалуйста, попробуйте еще раз.');
-        throw error;
+        // Здесь мы не пробрасываем ошибку дальше, чтобы initGame мог продолжить выполнение
     }
 }
 
@@ -832,9 +844,11 @@ tg.ready();
 document.addEventListener('DOMContentLoaded', () => {
     console.log('DOMContentLoaded event fired');
     if (isMobileDevice()) {
+        console.log('Mobile device detected, initializing game...');
         initGame().catch(error => {
             console.error('Failed to initialize game:', error);
             showNotification('Произошла ошибка при загрузке игры. Пожалуйста, обновите страницу.');
+            hideLoadingScreen(); // Ensure loading screen is hidden even if there's an error
         });
         document.body.addEventListener('click', (event) => {
             if (event.target.closest('#miningContainer')) {
@@ -843,6 +857,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         initTabButtons();
     } else {
+        console.log('Desktop device detected, showing QR code...');
         showQRCode();
     }
 });
