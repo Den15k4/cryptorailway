@@ -37,6 +37,7 @@ function hideLoadingScreen() {
 
 async function initGame() {
     try {
+        console.log('Starting game initialization...');
         showLoadingScreen();
         updateLoadingProgress(10);
         console.log('Loading game data...');
@@ -52,8 +53,12 @@ async function initGame() {
         checkReferral();
         updateLoadingProgress(100);
         console.log('Game initialization complete.');
-        setTimeout(hideLoadingScreen, 500);
+        setTimeout(() => {
+            hideLoadingScreen();
+            console.log('Loading screen hidden.');
+        }, 500);
         initParticles();
+        console.log('Particles initialized.');
     } catch (error) {
         console.error('Error during game initialization:', error);
         showNotification('Произошла ошибка при загрузке игры. Пожалуйста, обновите страницу.');
@@ -93,8 +98,10 @@ function formatNumber(num) {
 
 async function loadGame() {
     try {
+        console.log('Starting loadGame function...');
         const savedGame = localStorage.getItem('gameState');
         if (savedGame) {
+            console.log('Found saved game in localStorage');
             const parsedGame = JSON.parse(savedGame);
             const now = Date.now();
             const offlineTime = now - parsedGame.lastLoginTime;
@@ -106,6 +113,9 @@ async function loadGame() {
             parsedGame.lastClaimTime = now;
             
             Object.assign(game, parsedGame);
+            console.log('Local game data loaded:', game);
+        } else {
+            console.log('No saved game found in localStorage');
         }
         
         console.log('Loading game data for user:', tg.initDataUnsafe.user.id);
@@ -130,8 +140,9 @@ async function loadGame() {
             throw new Error('Failed to load game data');
         }
     } catch (error) {
-        console.error('Error loading game:', error);
+        console.error('Error in loadGame function:', error);
         showNotification('Произошла ошибка при загрузке игры. Пожалуйста, попробуйте еще раз.');
+        throw error;
     }
 }
 
@@ -346,333 +357,6 @@ function createDailyTabContent() {
     return content;
 }
 
-// Остальные функции (claim, showSubscribeModal, checkSubscription, claimDailyBonus, inviteFriend, submitVideo, etc.) остаются без изменений
-
-// Инициализация игры
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOMContentLoaded event fired');
-    initGame().catch(error => {
-        console.error('Failed to initialize game:', error);
-        showNotification('Произошла ошибка при загрузке игры. Пожалуйста, обновите страницу.');
-    });
-    
-    const scrollableContent = document.getElementById('scrollableContent');
-    scrollableContent.addEventListener('click', (event) => {
-        if (event.target.closest('#miningContainer')) {
-            handleManualMining(event);
-        }
-    });
-});
-
-// Функции для обновления состояния игры
-function updateGameState() {
-    updateMining();
-    saveGameToLocalStorage();
-    updateUI();
-}
-
-// Оптимизированное сохранение игры
-let lastSaveTime = 0;
-const saveInterval = 30000; // 30 секунд
-
-function smartSaveGame() {
-    const now = Date.now();
-    if (now - lastSaveTime >= saveInterval) {
-        saveGame();
-        lastSaveTime = now;
-    }
-}
-
-// Измените интервал обновления
-setInterval(() => {
-    updateGameState();
-    smartSaveGame();
-}, 1000);
-
-// Оптимизированное обновление состояния игры
-let lastUpdateTime = 0;
-const updateInterval = 30000; // 30 секунд
-
-async function smartFetchGameState() {
-    const now = Date.now();
-    if (now - lastUpdateTime >= updateInterval) {
-        await fetchGameState();
-        lastUpdateTime = now;
-    }
-}
-
-setInterval(smartFetchGameState, 1000);
-
-// Функция синхронизации с сервером
-async function syncWithServer() {
-    try {
-        const response = await fetch(`/api/game/${tg.initDataUnsafe.user.id}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(game),
-        });
-        if (!response.ok) {
-            throw new Error('Failed to sync game data');
-        }
-        console.log('Game synced successfully');
-    } catch (error) {
-        console.error('Error syncing game:', error);
-        showNotification('Не удалось синхронизировать прогресс. Автоматическая попытка через 5 секунд...');
-        setTimeout(syncWithServer, 5000);
-    }
-}
-
-// Вызывайте эту функцию периодически, например, каждые 5 минут
-setInterval(syncWithServer, 5 * 60 * 1000);
-
-// Функция отладки
-function debugMining() {
-    console.log('Current mining:', game.currentMining);
-    console.log('Total mined:', game.totalMined);
-    console.log('Mining rate:', game.miningRate);
-    console.log('Last claim time:', new Date(game.lastClaimTime));
-    console.log('Current time:', new Date());
-}
-
-// Вызовем функцию отладки каждые 10 секунд
-setInterval(debugMining, 10000);
-
-// Обработчик события перед закрытием страницы
-window.addEventListener('beforeunload', () => {
-    saveGame();
-});
-
-// Инициализация Telegram Web App
-console.log('Telegram Web App data:', tg.initDataUnsafe);
-tg.expand();
-tg.ready();
-
-// Функция для инициализации частиц
-function initParticles() {
-    particlesJS("particles-js", {
-        particles: {
-            number: { value: 80, density: { enable: true, value_area: 800 } },
-            color: { value: "#ffffff" },
-            shape: { type: "circle", stroke: { width: 0, color: "#000000" }, polygon: { nb_sides: 5 } },
-            opacity: { value: 0.5, random: true, anim: { enable: true, speed: 1, opacity_min: 0.1, sync: false } },
-            size: { value: 3, random: true, anim: { enable: false, speed: 40, size_min: 0.1, sync: false } },
-            line_linked: { enable: true, distance: 150, color: "#ffffff", opacity: 0.4, width: 1 },
-            move: { enable: true, speed: 6, direction: "none", random: false, straight: false, out_mode: "out", bounce: false, attract: { enable: false, rotateX: 600, rotateY: 1200 } }
-        },
-        interactivity: {
-            detect_on: "canvas",
-            events: { onhover: { enable: true, mode: "repulse" }, onclick: { enable: true, mode: "push" }, resize: true },
-            modes: { grab: { distance: 400, line_linked: { opacity: 1 } }, bubble: { distance: 400, size: 40, duration: 2, opacity: 8, speed: 3 }, repulse: { distance: 200, duration: 0.4 }, push: { particles_nb: 4 }, remove: { particles_nb: 2 } }
-        },
-        retina_detect: true
-    });
-}
-
-// Функция для обновления UI таблицы лидеров
-async function updateLeaderboardUI(leaderboardData) {
-    let content = `
-        <table>
-            <tr><th>Место</th><th>Ник</th><th>Счет</th></tr>
-    `;
-
-    leaderboardData.forEach((player, index) => {
-        content += `
-            <tr>
-                <td>${index + 1}</td>
-                <td><img src="icon_button/telegram-icon.png" alt="Telegram" class="telegram-icon">${player.username || 'Аноним'}</td>
-                <td>${formatNumber(player.balance)}</td>
-            </tr>
-        `;
-    });
-
-    content += `
-        </table>
-    `;
-
-    try {
-        const rankResponse = await fetch(`/api/player-rank/${tg.initDataUnsafe.user.id}`);
-        if (rankResponse.ok) {
-            const rankData = await rankResponse.json();
-            const displayRank = rankData.rank > 100 ? '100+' : rankData.rank;
-            content += `<p>Ваше место: ${displayRank}</p>`;
-        } else {
-            throw new Error('Failed to fetch player rank');
-        }
-    } catch (error) {
-        console.error('Error fetching player rank:', error);
-        content += `<p>Ваше место: N/A</p>`;
-    }
-
-    document.getElementById('leaderboard').innerHTML = content;
-}
-
-// Функция для обновления списка рефералов
-function updateReferralsList() {
-    const referralsListItems = document.getElementById('referralsListItems');
-    if (referralsListItems) {
-        referralsListItems.innerHTML = '';
-        game.referrals.forEach(referral => {
-            const li = document.createElement('li');
-            li.textContent = `${referral.username} - ${formatNumber(referral.minedAmount)} монет`;
-            referralsListItems.appendChild(li);
-        });
-    }
-}
-
-// Функция для обработки ручного майнинга
-let lastClickTime = 0;
-const clickCooldown = 100; // 100 мс между кликами
-
-function handleManualMining(event) {
-    const now = Date.now();
-    if (now - lastClickTime >= clickCooldown) {
-        lastClickTime = now;
-        game.currentMining += 0.001;
-        game.totalMined += 0.001;
-        updateUI();
-        showManualMiningEffect(event);
-        saveGame();
-    }
-}
-
-// Функция для отображения эффекта ручного майнинга
-function showManualMiningEffect(event) {
-    const effect = document.createElement('div');
-    effect.className = 'manual-mining-effect';
-    effect.textContent = '+0.001';
-    effect.style.position = 'absolute';
-    effect.style.left = `${event.clientX}px`;
-    effect.style.top = `${event.clientY}px`;
-    document.body.appendChild(effect);
-
-    gsap.to(effect, {
-        opacity: 0,
-        y: -20,
-        duration: 1,
-        onComplete: () => effect.remove()
-    });
-}
-
-// Функция для отображения модального окна ежедневного бонуса
-function showDailyBonusModal() {
-    const bonusAmounts = [1, 1, 2, 3, 5, 8, 13, 21, 34, 55];
-    const currentDay = (game.dailyBonusDay % 10) + 1;
-
-    let daysHtml = '';
-    for (let i = 1; i <= 10; i++) {
-        const isCurrentDay = i === currentDay;
-        const isPastDay = i < currentDay;
-        const dayClass = isCurrentDay ? 'current-day' : (isPastDay ? 'past-day' : '');
-        const textColor = isPastDay ? 'color: black;' : '';
-        daysHtml += `
-            <div class="day-box ${dayClass}">
-                <div class="day-number" style="${textColor}">Day ${i}</div>
-                <div class="coin-icon"></div>
-                <div class="bonus-amount" style="${textColor}">${bonusAmounts[i-1]}</div>
-            </div>
-        `;
-    }
-
-    const modalContent = `
-        <div class="daily-bonus-container">
-            <div class="bonus-icon">🎁</div>
-            <h2>Daily Boost</h2>
-            <p>Get $SWITCH for daily login,<br>don't miss a day</p>
-            <div class="days-grid">
-                ${daysHtml}
-            </div>
-            <button id="claimDailyBonus" class="claim-button" ${currentDay > 10 ? 'disabled' : ''}>
-                ${currentDay > 10 ? 'Come back tomorrow' : 'Claim Bonus'}
-            </button>
-        </div>
-    `;
-
-    showModal(modalContent);
-    document.getElementById('claimDailyBonus').addEventListener('click', claimDailyBonus);
-}
-
-// Функция для отправки сообщения боту
-async function sendMessageToBot(message) {
-    try {
-        const response = await fetch('/send-message', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ message }),
-        });
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-        const result = await response.json();
-        console.log(result.message);
-    } catch (error) {
-        console.error('Error sending message to bot:', error);
-    }
-}
-
-// Функция для отображения модального окна
-function showModal(content) {
-    const modal = document.createElement('div');
-    modal.className = 'modal';
-    modal.innerHTML = `
-        <div class="modal-content">
-            ${content}
-            <button class="close-modal">×</button>
-        </div>
-    `;
-    document.body.appendChild(modal);
-
-    modal.querySelector('.close-modal').addEventListener('click', hideModal);
-}
-
-// Функция для скрытия модального окна
-function hideModal() {
-    const modal = document.querySelector('.modal');
-    if (modal) {
-        document.body.removeChild(modal);
-    }
-}
-
-// Функция для отображения уведомлений
-function showNotification(message) {
-    const notification = document.getElementById('notification');
-    notification.textContent = message;
-    notification.classList.remove('hidden');
-    setTimeout(() => {
-        notification.classList.add('hidden');
-    }, 3000);
-}
-
-// Функция для проверки реферала
-function checkReferral() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const referralCode = urlParams.get('start');
-    if (referralCode && referralCode.startsWith('ref_')) {
-        handleReferral(referralCode.slice(4));
-    }
-}
-
-// Функция для обработки реферала
-async function handleReferral(referrerId) {
-    try {
-        const response = await fetch(`/api/referral/${tg.initDataUnsafe.user.id}/${referrerId}`, {
-            method: 'POST'
-        });
-        if (response.ok) {
-            showNotification('Вы успешно присоединились по реферальной ссылке!');
-        } else {
-            const data = await response.json();
-            console.error('Failed to process referral:', data.error);
-        }
-    } catch (error) {
-        console.error('Error processing referral:', error);
-    }
-}
-
-// Функция для сбора добытой криптовалюты
 async function claim() {
     if (game.currentMining < 0.1) {
         showNotification("Недостаточно крипто для сбора. Минимум 0.1");
@@ -710,13 +394,446 @@ async function claim() {
     }
 }
 
-// Функция для отображения эффекта сбора
 function showClaimEffect() {
     gsap.fromTo("#miningContainer", 
         { scale: 1, opacity: 1 },
         { scale: 1.1, opacity: 0.8, duration: 0.3, yoyo: true, repeat: 1 }
     );
 }
+
+function showSubscribeModal(channelLink, channelIndex) {
+    const modalContent = `
+        <div class="subscribe-modal">
+            <h3>Подписка на канал</h3>
+            <p>Для получения ускорителя, подпишитесь на канал:</p>
+            <a href="${channelLink}" target="_blank" class="subscribe-link" id="subscribeLink">Перейти на канал</a>
+            <button id="checkSubscriptionButton" class="check-subscription" disabled>Проверить подписку</button>
+        </div>
+    `;
+    showModal(modalContent);
+    document.getElementById('subscribeLink').addEventListener('click', () => {
+        document.getElementById('checkSubscriptionButton').disabled = false;
+    });
+    document.getElementById('checkSubscriptionButton').addEventListener('click', () => checkSubscription(channelIndex));
+}
+
+async function checkSubscription(channelIndex) {
+    try {
+        const response = await fetch(`/api/subscribe/${tg.initDataUnsafe.user.id}/${channelIndex}`, {
+            method: 'POST'
+        });
+        if (response.ok) {
+            const data = await response.json();
+            if (!game.subscribedChannels.includes(channelIndex)) {
+                game.subscribedChannels.push(channelIndex);
+                game.miningRate += 0.003;
+                showNotification("Ускоритель активирован! +0.003 к скорости добычи");
+                updateUI();
+                await saveGame();
+            } else {
+                showNotification("Вы уже активировали этот ускоритель.");
+            }
+        } else {
+            throw new Error('Failed to check subscription');
+        }
+    } catch (error) {
+        console.error('Error checking subscription:', error);
+        showNotification("Произошла ошибка при проверке подписки. Попробуйте позже.");
+    }
+    hideModal();
+}
+
+async function claimDailyBonus() {
+    try {
+        const response = await fetch(`/api/daily-bonus/${tg.initDataUnsafe.user.id}`, {
+            method: 'POST'
+        });
+        const data = await response.json();
+        if (response.ok) {
+            game.balance += data.bonusAmount;
+            game.dailyBonusDay = data.newDailyBonusDay;
+            game.lastDailyBonusTime = Date.now();
+            
+            localStorage.setItem('lastDailyBonusTime', Date.now().toString());
+            
+            showNotification(`Вы получили ежедневный бонус: ${data.bonusAmount} монет!`);
+            updateUI();
+            await saveGame();
+        } else {
+            showNotification(data.error || "Не удалось получить ежедневный бонус. Попробуйте позже.");
+        }
+    } catch (error) {
+        console.error('Error claiming daily bonus:', error);
+        showNotification("Произошла ошибка при получении ежедневного бонуса. Попробуйте позже.");
+    } finally {
+        hideModal();
+    }
+}
+
+function inviteFriend() {
+    console.log('inviteFriend function called');
+    console.log('tg object:', tg);
+    console.log('User:', tg.initDataUnsafe.user);
+    
+    const referralLink = `https://t.me/paradox_token_bot/paradox?start=ref_${tg.initDataUnsafe.user.id}`;
+    const shareText = encodeURIComponent(`Присоединяйся к CryptoVerse Miner! Заходи и начинай майнить!`);
+    const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${shareText}`;
+    
+    window.open(shareUrl, '_blank');
+}
+
+function checkReferral() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const referralCode = urlParams.get('start');
+    if (referralCode && referralCode.startsWith('ref_')) {
+        handleReferral(referralCode.slice(4));
+    }
+}
+
+async function handleReferral(referrerId) {
+    try {
+        const response = await fetch(`/api/referral/${tg.initDataUnsafe.user.id}/${referrerId}`, {
+            method: 'POST'
+        });
+        if (response.ok) {
+            showNotification('Вы успешно присоединились по реферальной ссылке!');
+        } else {
+            const data = await response.json();
+            console.error('Failed to process referral:', data.error);
+        }
+    } catch (error) {
+        console.error('Error processing referral:', error);
+    }
+}
+
+async function submitVideo() {
+    const content = `
+        <h3>Отправить видео</h3>
+        <input type="text" id="videoLink" placeholder="Вставьте ссылку на видео">
+        <button id="submitVideoLinkButton" class="daily-button">Отправить</button>
+    `;
+    showModal(content);
+    document.getElementById('submitVideoLinkButton').addEventListener('click', async () => {
+        const videoLink = document.getElementById('videoLink').value;
+        if (videoLink) {
+            try {
+                const response = await fetch(`/api/submit-video/${tg.initDataUnsafe.user.id}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ videoLink }),
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    game.balance += data.reward;
+                    game.lastVideoSubmission = Date.now();
+                    showNotification(`Видео принято! Вы получили ${data.reward} монет.`);
+                    updateUI();
+                    await saveGame();
+                    await updateLeaderboard();
+                    hideModal();
+                } else {
+                    const errorData = await response.json();
+                    showNotification(errorData.error || "Произошла ошибка при отправке видео.");
+                }
+            } catch (error) {
+                console.error('Error submitting video:', error);
+                showNotification("Произошла ошибка при отправке видео. Попробуйте позже.");
+            }
+        } else {
+            showNotification("Пожалуйста, введите ссылку на видео.");
+        }
+    });
+}
+
+function showModal(content) {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            ${content}
+            <button class="close-modal">×</button>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    modal.querySelector('.close-modal').addEventListener('click', hideModal);
+}
+
+function hideModal() {
+    const modal = document.querySelector('.modal');
+    if (modal) {
+        document.body.removeChild(modal);
+    }
+}
+
+function showNotification(message) {
+    const notification = document.getElementById('notification');
+    notification.textContent = message;
+    notification.classList.remove('hidden');
+    setTimeout(() => {
+        notification.classList.add('hidden');
+    }, 3000);
+}
+
+let lastClickTime = 0;
+const clickCooldown = 100; // 100 мс между кликами
+
+function handleManualMining(event) {
+    const now = Date.now();
+    if (now - lastClickTime >= clickCooldown) {
+        lastClickTime = now;
+        game.currentMining += 0.001;
+        game.totalMined += 0.001;
+        updateUI();
+        showManualMiningEffect(event);
+        saveGame();
+    }
+}
+
+function showManualMiningEffect(event) {
+    const effect = document.createElement('div');
+    effect.className = 'manual-mining-effect';
+    effect.textContent = '+0.001';
+    effect.style.position = 'absolute';
+    effect.style.left = `${event.clientX}px`;
+    effect.style.top = `${event.clientY}px`;
+    document.body.appendChild(effect);
+
+    gsap.to(effect, {
+        opacity: 0,
+        y: -20,
+        duration: 1,
+        onComplete: () => effect.remove()
+    });
+}
+
+function showDailyBonusModal() {
+    const bonusAmounts = [1, 1, 2, 3, 5, 8, 13, 21, 34, 55];
+    const currentDay = (game.dailyBonusDay % 10) + 1;
+
+    let daysHtml = '';
+    for (let i = 1; i <= 10; i++) {
+        const isCurrentDay = i === currentDay;
+        const isPastDay = i < currentDay;
+        const dayClass = isCurrentDay ? 'current-day' : (isPastDay ? 'past-day' : '');
+        const textColor = isPastDay ? 'color: black;' : '';
+        daysHtml += `
+            <div class="day-box ${dayClass}">
+                <div class="day-number" style="${textColor}">Day ${i}</div>
+                <div class="coin-icon"></div>
+                <div class="bonus-amount" style="${textColor}">${bonusAmounts[i-1]}</div>
+            </div>
+        `;
+    }
+
+    const modalContent = `
+        <div class="daily-bonus-container">
+            <div class="bonus-icon">🎁</div>
+            <h2>Daily Boost</h2>
+            <p>Get $SWITCH for daily login,<br>don't miss a day</p>
+            <div class="days-grid">
+                ${daysHtml}
+            </div>
+            <button id="claimDailyBonus" class="claim-button" ${currentDay > 10 ? 'disabled' : ''}>
+                ${currentDay > 10 ? 'Come back tomorrow' : 'Claim Bonus'}
+            </button>
+        </div>
+    `;
+
+    showModal(modalContent);
+    document.getElementById('claimDailyBonus').addEventListener('click', claimDailyBonus);
+}
+
+async function sendMessageToBot(message) {
+    try {
+        const response = await fetch('/send-message', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ message }),
+        });
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        const result = await response.json();
+        console.log(result.message);
+    } catch (error) {
+        console.error('Error sending message to bot:', error);
+    }
+}
+
+function initParticles() {
+    particlesJS("particles-js", {
+        particles: {
+            number: { value: 150, density: { enable: true, value_area: 800 } },
+            color: { value: "#8774e1" },
+            shape: { type: "circle", stroke: { width: 0, color: "#000000" }, polygon: { nb_sides: 5 } },
+            opacity: { value: 0.8, random: true, anim: { enable: true, speed: 1, opacity_min: 0.1, sync: false } },
+            size: { value: 5, random: true, anim: { enable: true, speed: 3, size_min: 0.1, sync: false } },
+            line_linked: { enable: true, distance: 150, color: "#8774e1", opacity: 0.6, width: 1.5 },
+            move: { enable: true, speed: 6, direction: "none", random: true, straight: false, out_mode: "out", bounce: false, attract: { enable: false, rotateX: 600, rotateY: 1200 } }
+        },
+        interactivity: {
+            detect_on: "canvas",
+            events: { onhover: { enable: true, mode: "repulse" }, onclick: { enable: true, mode: "push" }, resize: true },
+            modes: { grab: { distance: 400, line_linked: { opacity: 1 } }, bubble: { distance: 400, size: 40, duration: 2, opacity: 8, speed: 3 }, repulse: { distance: 200, duration: 0.4 }, push: { particles_nb: 4 }, remove: { particles_nb: 2 } }
+        },
+        retina_detect: true
+    });
+}
+
+async function updateLeaderboardUI(leaderboardData) {
+    let content = `
+        <table>
+            <tr><th>Место</th><th>Ник</th><th>Счет</th></tr>
+    `;
+
+    leaderboardData.forEach((player, index) => {
+        content += `
+            <tr>
+                <td>${index + 1}</td>
+                <td><img src="icon_button/telegram-icon.png" alt="Telegram" class="telegram-icon">${player.username || 'Аноним'}</td>
+                <td>${formatNumber(player.balance)}</td>
+            </tr>
+        `;
+    });
+
+    content += `
+        </table>
+    `;
+
+    try {
+        const rankResponse = await fetch(`/api/player-rank/${tg.initDataUnsafe.user.id}`);
+        if (rankResponse.ok) {
+            const rankData = await rankResponse.json();
+            const displayRank = rankData.rank > 100 ? '100+' : rankData.rank;
+            content += `<p>Ваше место: ${displayRank}</p>`;
+        } else {
+            throw new Error('Failed to fetch player rank');
+        }
+    } catch (error) {
+        console.error('Error fetching player rank:', error);
+        content += `<p>Ваше место: N/A</p>`;
+    }
+
+    document.getElementById('leaderboard').innerHTML = content;
+}
+
+function updateReferralsList() {
+    const referralsListItems = document.getElementById('referralsListItems');
+    if (referralsListItems) {
+        referralsListItems.innerHTML = '';
+        game.referrals.forEach(referral => {
+            const li = document.createElement('li');
+            li.textContent = `${referral.username} - ${formatNumber(referral.minedAmount)} монет`;
+            referralsListItems.appendChild(li);
+        });
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOMContentLoaded event fired');
+    if (window.Telegram && window.Telegram.WebApp) {
+        console.log('Telegram Web App is available');
+        initGame().catch(error => {
+            console.error('Failed to initialize game:', error);
+            showNotification('Произошла ошибка при загрузке игры. Пожалуйста, обновите страницу.');
+        });
+    } else {
+        console.error('Telegram Web App is not available');
+        showNotification('Ошибка: Telegram Web App не доступен. Пожалуйста, убедитесь, что вы открываете игру через Telegram.');
+    }
+    
+    const scrollableContent = document.getElementById('scrollableContent');
+    scrollableContent.addEventListener('click', (event) => {
+        if (event.target.closest('#miningContainer')) {
+            handleManualMining(event);
+        }
+    });
+});
+
+function updateGameState() {
+    updateMining();
+    saveGameToLocalStorage();
+    updateUI();
+}
+
+let lastSaveTime = 0;
+const saveInterval = 30000; // 30 секунд
+
+function smartSaveGame() {
+    const now = Date.now();
+    if (now - lastSaveTime >= saveInterval) {
+        saveGame();
+        lastSaveTime = now;
+    }
+}
+
+setInterval(() => {
+    updateGameState();
+    smartSaveGame();
+}, 1000);
+
+let lastUpdateTime = 0;
+const updateInterval = 30000; // 30 секунд
+
+async function smartFetchGameState() {
+    const now = Date.now();
+    if (now - lastUpdateTime >= updateInterval) {
+        await fetchGameState();
+        lastUpdateTime = now;
+    }
+}
+
+setInterval(smartFetchGameState, 1000);
+
+async function syncWithServer() {
+    try {
+        const response = await fetch(`/api/game/${tg.initDataUnsafe.user.id}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(game),
+        });
+        if (!response.ok) {
+            throw new Error('Failed to sync game data');
+        }
+        console.log('Game synced successfully');
+    } catch (error) {
+        console.error('Error syncing game:', error);
+        showNotification('Не удалось синхронизировать прогресс. Автоматическая попытка через 5 секунд...');
+        setTimeout(syncWithServer, 5000);
+    }
+}
+
+// Вызывайте эту функцию периодически, например, каждые 5 минут
+setInterval(syncWithServer, 5 * 60 * 1000);
+
+function debugMining() {
+    console.log('Current mining:', game.currentMining);
+    console.log('Total mined:', game.totalMined);
+    console.log('Mining rate:', game.miningRate);
+    console.log('Last claim time:', new Date(game.lastClaimTime));
+    console.log('Current time:', new Date());
+}
+
+// Вызовем функцию отладки каждые 10 секунд
+setInterval(debugMining, 10000);
+
+window.addEventListener('beforeunload', () => {
+    saveGame();
+});
+
+console.log('Telegram Web App data:', tg.initDataUnsafe);
+
+tg.expand();
+
+// Инициализация Telegram Web App
+tg.ready();
 
 // Экспорт функций и переменных, которые могут понадобиться в других модулях
 export {
