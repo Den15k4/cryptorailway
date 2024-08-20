@@ -1058,3 +1058,7 @@ header {
 .booster-button:hover {
     opacity: 0.8;
 }
+.tab-button.active {
+    color: var(--accent-color);
+    opacity: 1;
+}
