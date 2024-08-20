@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>$PARADOX Miner</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/particles.js/2.0.0/particles.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CryptoVerse Miner</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/particles.js/2.0.0/particles.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.7.1/gsap.min.js"></script>
 </head>
 <body>
     <div id="loading-screen">
@@ -20,14 +20,18 @@
     <div id="particles-js"></div>
 
     <div id="app">
-        <img src="icon_button/paradox_logo.png" alt="$PARADOX" class="logo">
-        <div>
-            <h2>Mining Rate: <span id="miningRateValue">0.001</span> crypto/sec</h2>
-        </div>
+        <header>
+            <img src="icon_button/paradox_logo.png" alt="$PARADOX" class="logo">
+            <div id="miningRate">
+                <h2>Mining Rate: <span id="miningRateValue">0.001</span> crypto/sec</h2>
+            </div>
+        </header>
 
-        <div id="mainContent" role="main"></div>
+        <main id="scrollableContent">
+            <!-- Контент будет загружаться динамически -->
+        </main>
 
-        <div id="tabBar">
+        <footer id="tabBar">
             <button class="tab-button" data-tab="main">
                 <img src="icon_button/main-icon.png" alt="Main">
                 <span>Main</span>
@@ -44,7 +48,7 @@
                 <img src="icon_button/daily-icon.png" alt="Daily">
                 <span>Daily</span>
             </button>
-        </div>
+        </footer>
     </div>
 
     <div id="notification" class="hidden" role="alert" aria-live="polite"></div>
