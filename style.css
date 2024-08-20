@@ -992,3 +992,59 @@ h1, h2, h3 {
     font-size: 16px;
     margin-bottom: 20px;
 }
+body, html {
+    height: 100%;
+    overflow: hidden;
+}
+
+#app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+#appHeader {
+    flex-shrink: 0;
+    padding: 10px;
+    background-color: var(--bg-color);
+    z-index: 10;
+}
+
+#mainContent {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 20px;
+    padding-bottom: 70px;
+}
+
+#tabBar {
+    flex-shrink: 0;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: var(--bg-color);
+    z-index: 10;
+}
+
+.boosters-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.booster-button {
+    width: 100%;
+    padding: 15px;
+    font-size: 16px;
+    background-color: var(--button-color);
+    color: var(--button-text-color);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.booster-button:hover {
+    opacity: 0.8;
+}

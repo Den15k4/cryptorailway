@@ -284,19 +284,25 @@ function showMainTab() {
 }
 
 function showBoostersTab() {
-    const content = `
+    let content = `
         <h2>Boosters</h2>
-        <button id="subscribeButton1" class="booster-button">Subscribe to Channel 1</button>
-        <button id="subscribeButton2" class="booster-button">Subscribe to Channel 2</button>
-        <button id="subscribeButton3" class="booster-button">Subscribe to Channel 3</button>
+        <div class="boosters-container">
     `;
+    
+    for (let i = 1; i <= 10; i++) {
+        content += `
+            <button id="subscribeButton${i}" class="booster-button">Subscribe to Channel ${i}</button>
+        `;
+    }
+    
+    content += `</div>`;
+    
     document.getElementById('mainContent').innerHTML = content;
     
-    document.getElementById('subscribeButton1').addEventListener('click', () => showSubscribeModal('https://t.me/never_sol', 0));
-    document.getElementById('subscribeButton2').addEventListener('click', () => showSubscribeModal('https://t.me/channel2', 1));
-    document.getElementById('subscribeButton3').addEventListener('click', () => showSubscribeModal('https://t.me/channel3', 2));
+    for (let i = 1; i <= 10; i++) {
+        document.getElementById(`subscribeButton${i}`).addEventListener('click', () => showSubscribeModal(`https://t.me/channel${i}`, i-1));
+    }
 }
-
 async function showLeaderboardTab() {
     try {
         const response = await fetch('/api/leaderboard');
@@ -406,20 +412,39 @@ function updateReferralsList() {
 
 function loadTabContent(tab) {
     currentTab = tab;
-    switch(tab) {
-        case 'main':
-            showMainTab();
-            break;
-        case 'boosters':
-            showBoostersTab();
-            break;
-        case 'leaderboard':
-            showLeaderboardTab();
-            break;
-        case 'daily':
-            showDailyTab();
-            break;
-    }
+    const mainContent = document.getElementById('mainContent');
+    
+    // Анимация исчезновения текущего контента
+    gsap.to(mainContent, {
+        opacity: 0,
+        duration: 0.2,
+        onComplete: () => {
+            // Очистка контента перед загрузкой нового
+            mainContent.innerHTML = '';
+            
+            // Загрузка нового контента
+            switch(tab) {
+                case 'main':
+                    showMainTab();
+                    break;
+                case 'boosters':
+                    showBoostersTab();
+                    break;
+                case 'leaderboard':
+                    showLeaderboardTab();
+                    break;
+                case 'daily':
+                    showDailyTab();
+                    break;
+            }
+            
+            // Анимация появления нового контента
+            gsap.fromTo(mainContent, 
+                { opacity: 0, y: 20 },
+                { opacity: 1, y: 0, duration: 0.3 }
+            );
+        }
+    });
 }
 
 async function claim() {
