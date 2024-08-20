@@ -349,7 +349,7 @@ function updateUI() {
 
   function showDailyTab() {
     const content = `
-    <div style="margin-top: 60px;">
+    <div style="margin-top: 100px;">
       <h2>Daily Tasks</h2>
       <div class="daily-tasks">
         <div class="task">
