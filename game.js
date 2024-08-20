@@ -260,9 +260,9 @@ function updateUI() {
     }
   }
 
-function showMainTab() {
+  function showMainTab() {
     const content = `
-      <div id="miningContainer">
+      <div id="miningContainer" style="margin-top: 20px;">
         <div id="miningStats">
           <div class="stat">
             <p>Mined</p>
@@ -278,7 +278,7 @@ function showMainTab() {
     `;
     document.getElementById('mainContent').innerHTML = content;
     document.getElementById('claimButton').addEventListener('click', claim);
-  }
+}
 
   function showBoostersTab() {
     const content = `
@@ -334,7 +334,7 @@ function showMainTab() {
   
     document.getElementById('mainContent').innerHTML = content;
   
-    // Добавляем запрос на получение ранга игрока
+    // Добавляем запрос на получение ранга игрока только один раз
     fetch(`/api/player-rank/${tg.initDataUnsafe.user.id}`)
       .then(response => response.json())
       .then(data => {
@@ -348,7 +348,7 @@ function showMainTab() {
         errorElement.textContent = 'Не удалось загрузить ваше место в рейтинге';
         document.getElementById('mainContent').appendChild(errorElement);
       });
-  }
+}
 
   function showDailyTab() {
     const content = `

@@ -57,7 +57,6 @@ body, html {
     left: 0;
     right: 0;
     z-index: 100;
-    background-color: var(--bg-color);
     padding: 10px;
 }
 
@@ -77,10 +76,11 @@ body, html {
 #scrollableContent {
     flex-grow: 1;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     padding: 20px;
     margin-top: 100px; /* Настройте в зависимости от высоты header'а */
     margin-bottom: 60px; /* Настройте в зависимости от высоты footer'а */
-    -webkit-overflow-scrolling: touch;
+    height: calc(100vh - 160px); /* Вычитаем высоту header'а и footer'а */
 }
 
 #mainContent {
