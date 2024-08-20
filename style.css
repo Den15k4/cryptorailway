@@ -6,8 +6,6 @@
     --accent-color: #ffffff;
     --button-color: #ffffff;
     --button-text-color: #000000;
-    --link-color: #8774e1;
-    --hint-color: #a0a0a0;
 }
 
 * {
@@ -37,9 +35,10 @@ body, html {
 #app {
     display: flex;
     flex-direction: column;
-    height: 100vh;
+    height: 100%;
     position: relative;
     z-index: 1;
+    padding-bottom: 60px;
 }
 
 #particles-js {
@@ -51,62 +50,29 @@ body, html {
     z-index: 0;
 }
 
-header {
-    flex-shrink: 0;
-    height: 100px;
-    padding: 10px;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    background-color: var(--bg-color);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-}
-
 .logo {
     width: 200px;
     margin: 20px auto;
     display: block;
 }
 
-#miningRate {
-    text-align: center;
-}
-
-#miningRate h2 {
-    font-size: 16px;
-    margin: 0;
-}
-
-#scrollableContent {
-    flex-grow: 1;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-#tabBar {
-    flex-shrink: 0;
-    height: 60px;
-    position: sticky;
-    bottom: 0;
-    z-index: 100;
-    background-color: rgba(0, 0, 0, 0.8);
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    backdrop-filter: blur(5px);
-}
-
 h1, h2, h3 {
     font-family: 'Orbitron', sans-serif;
     color: var(--text-color);
     text-shadow: 0 0 10px var(--text-color);
+}
+
+#mainContent {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    position: relative;
+    z-index: 2;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    height: calc(100vh - 120px); /* Adjust based on your header and footer height */
 }
 
 #miningContainer {
@@ -168,6 +134,20 @@ h1, h2, h3 {
     transform: none;
 }
 
+#tabBar {
+    display: flex;
+    justify-content: space-around;
+    background-color: rgba(0, 0, 0, 0.8);
+    padding: 10px 0;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    box-shadow: 0 -2px 10px rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(5px);
+}
+
 .tab-button {
     display: flex;
     flex-direction: column;
@@ -218,6 +198,8 @@ h1, h2, h3 {
     opacity: 0;
     pointer-events: none;
 }
+
+/* Rest of the CSS remains the same */
 
 #loader {
     position: fixed;
@@ -403,7 +385,6 @@ h1, h2, h3 {
 .coin-icon::after {
     content: '🪙';
 }
-
 .past-day {
     background-color: var(--button-color);
 }
@@ -551,7 +532,7 @@ h1, h2, h3 {
 
 .progress {
     width: 0%;
-    height:100%;
+    height: 100%;
     background-color: var(--link-color);
     transition: width 0.3s ease;
 }
@@ -933,6 +914,57 @@ h1, h2, h3 {
         flex-direction: column;
         justify-content: center;
     }
+}
+
+/* Стили для экрана загрузки */
+#loading-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--bg-color);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.spiral {
+    width: 50px;
+    height: 50px;
+    border: 3px solid transparent;
+    border-top-color: var(--link-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.progress-bar {
+    width: 200px;
+    height: 4px;
+    background-color: rgba(255, 255, 255, 0.2);
+    margin-top: 20px;
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.progress {
+    width: 0%;
+    height: 100%;
+    background-color: var(--link-color);
+    transition: width 0.3s ease;
+}
+
+.loading-text {
+    margin-top: 10px;
+    color: var(--text-color);
+    font-size: 14px;
 }
 
 /* Стили для QR-кода */

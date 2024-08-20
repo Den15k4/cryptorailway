@@ -17,7 +17,6 @@ let game = {
 
 let saveGameTimeout;
 let currentTab = 'main';
-
 function isMobileDevice() {
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 }
@@ -33,6 +32,13 @@ function showQRCode() {
     `;
 }
 
+if (!isMobileDevice()) {
+    showQRCode();
+} else {
+    // Initialize your app here
+    initGame();
+}
+
 function updateLoadingProgress(progress) {
     const progressBar = document.getElementById('progress');
     if (progressBar) {
@@ -46,46 +52,29 @@ function showLoadingScreen() {
 }
 
 function hideLoadingScreen() {
-    console.log('Hiding loading screen...');
-    const loadingScreen = document.getElementById('loading-screen');
-    const app = document.getElementById('app');
-    if (loadingScreen && app) {
-        loadingScreen.style.display = 'none';
-        app.style.display = 'block';
-        console.log('Loading screen hidden, app displayed.');
-    } else {
-        console.error('Loading screen or app element not found.');
-    }
+    document.getElementById('loading-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
 }
 
 async function initGame() {
     try {
-        console.log('Starting game initialization...');
         showLoadingScreen();
         updateLoadingProgress(10);
         console.log('Loading game data...');
         await loadGame();
-        console.log('Game data loaded successfully');
         updateLoadingProgress(40);
         console.log('Updating leaderboard...');
         await updateLeaderboard();
-        console.log('Leaderboard updated successfully');
         updateLoadingProgress(70);
         console.log('Initializing UI...');
         initUI();
-        console.log('UI initialized successfully');
         updateLoadingProgress(90);
         console.log('Checking referral...');
         checkReferral();
-        console.log('Referral check completed');
         updateLoadingProgress(100);
         console.log('Game initialization complete.');
-        setTimeout(() => {
-            hideLoadingScreen();
-            console.log('Loading screen hidden.');
-        }, 500);
+        setTimeout(hideLoadingScreen, 500);
         initParticles();
-        console.log('Particles initialized.');
     } catch (error) {
         console.error('Error during game initialization:', error);
         showNotification('Произошла ошибка при загрузке игры. Пожалуйста, обновите страницу.');
@@ -132,10 +121,8 @@ function formatNumber(num) {
 
 async function loadGame() {
     try {
-        console.log('Starting loadGame function...');
         const savedGame = localStorage.getItem('gameState');
         if (savedGame) {
-            console.log('Found saved game in localStorage');
             const parsedGame = JSON.parse(savedGame);
             const now = Date.now();
             const offlineTime = now - parsedGame.lastLoginTime;
@@ -147,9 +134,6 @@ async function loadGame() {
             parsedGame.lastClaimTime = now;
             
             Object.assign(game, parsedGame);
-            console.log('Local game data loaded:', game);
-        } else {
-            console.log('No saved game found in localStorage');
         }
         
         console.log('Loading game data for user:', tg.initDataUnsafe.user.id);
@@ -174,9 +158,8 @@ async function loadGame() {
             throw new Error('Failed to load game data');
         }
     } catch (error) {
-        console.error('Error in loadGame function:', error);
+        console.error('Error loading game:', error);
         showNotification('Произошла ошибка при загрузке игры. Пожалуйста, попробуйте еще раз.');
-        // Здесь мы не пробрасываем ошибку дальше, чтобы initGame мог продолжить выполнение
     }
 }
 
@@ -300,6 +283,127 @@ function showMainTab() {
     document.getElementById('claimButton').addEventListener('click', claim);
 }
 
+function showBoostersTab() {
+    const content = `
+        <h2>Boosters</h2>
+        <button id="subscribeButton1" class="booster-button">Subscribe to Channel 1</button>
+        <button id="subscribeButton2" class="booster-button">Subscribe to Channel 2</button>
+        <button id="subscribeButton3" class="booster-button">Subscribe to Channel 3</button>
+    `;
+    document.getElementById('mainContent').innerHTML = content;
+    
+    document.getElementById('subscribeButton1').addEventListener('click', () => showSubscribeModal('https://t.me/never_sol', 0));
+    document.getElementById('subscribeButton2').addEventListener('click', () => showSubscribeModal('https://t.me/channel2', 1));
+    document.getElementById('subscribeButton3').addEventListener('click', () => showSubscribeModal('https://t.me/channel3', 2));
+}
+
+async function showLeaderboardTab() {
+    try {
+        const response = await fetch('/api/leaderboard');
+        if (response.ok) {
+            const leaderboardData = await response.json();
+            console.log('Leaderboard data received:', leaderboardData);
+            updateLeaderboardUI(leaderboardData);
+        } else {
+            const errorData = await response.json();
+            console.error('Failed to fetch leaderboard data:', errorData);
+            throw new Error(errorData.error || 'Failed to fetch leaderboard data');
+        }
+    } catch (error) {
+        console.error('Error fetching leaderboard:', error);
+        document.getElementById('mainContent').innerHTML = `<p>Ошибка при загрузке таблицы лидеров: ${error.message}</p>`;
+    }
+}
+
+async function updateLeaderboardUI(leaderboardData) {
+    let content = `
+        <h2>Топ игроков</h2>
+        <div id="leaderboard">
+            <table>
+                <tr><th>Место</th><th>Ник</th><th>Счет</th></tr>
+    `;
+
+    leaderboardData.forEach((player, index) => {
+        content += `
+            <tr>
+                <td>${index + 1}</td>
+                <td><img src="icon_button/telegram-icon.png" alt="Telegram" class="telegram-icon">${player.username || 'Аноним'}</td>
+                <td>${formatNumber(player.balance)}</td>
+            </tr>
+        `;
+    });
+
+    content += `
+            </table>
+        </div>
+    `;
+
+    try {
+        const rankResponse = await fetch(`/api/player-rank/${tg.initDataUnsafe.user.id}`);
+        if (rankResponse.ok) {
+            const rankData = await rankResponse.json();
+            const displayRank = rankData.rank > 100 ? '100+' : rankData.rank;
+            content += `<p>Ваше место: ${displayRank}</p>`;
+        } else {
+            throw new Error('Failed to fetch player rank');
+        }
+    } catch (error) {
+        console.error('Error fetching player rank:', error);
+        content += `<p>Ваше место: N/A</p>`;
+    }
+
+    document.getElementById('mainContent').innerHTML = content;
+}
+
+function showDailyTab() {
+    const content = `
+        <h2>Daily Tasks</h2>
+        <div class="daily-tasks">
+            <div class="task">
+                <h3>Daily Bonus</h3>
+                <p>Get a bonus every day</p>
+                <button id="dailyBonusButton" class="task-button">Claim Bonus</button>
+            </div>
+            <div class="task">
+                <h3>Invite a Friend</h3>
+                <p>Get a reward for each invited friend</p>
+                <button id="inviteFriendButton" class="task-button">Invite</button>
+            </div>
+            <div class="task">
+                <h3>Submit Video</h3>
+                <p>Share a video and get a reward</p>
+                <button id="submitVideoButton" class="task-button">Submit</button>
+            </div>
+        </div>
+        <div id="referralsList">
+            <h3>Invited Friends:</h3>
+            <ul id="referralsListItems"></ul>
+        </div>
+    `;
+
+    document.getElementById('mainContent').innerHTML = content;
+    attachDailyTasksEventListeners();
+    updateReferralsList();
+}
+
+function attachDailyTasksEventListeners() {
+    document.getElementById('dailyBonusButton').addEventListener('click', showDailyBonusModal);
+    document.getElementById('inviteFriendButton').addEventListener('click', inviteFriend);
+    document.getElementById('submitVideoButton').addEventListener('click', submitVideo);
+}
+
+function updateReferralsList() {
+    const referralsListItems = document.getElementById('referralsListItems');
+    if (referralsListItems) {
+        referralsListItems.innerHTML = '';
+        game.referrals.forEach(referral => {
+            const li = document.createElement('li');
+            li.textContent = `${referral.username} - ${formatNumber(referral.minedAmount)} монет`;
+            referralsListItems.appendChild(li);
+        });
+    }
+}
+
 function loadTabContent(tab) {
     currentTab = tab;
     switch(tab) {
@@ -362,21 +466,16 @@ function showClaimEffect() {
     );
 }
 
-function showBoostersTab() {
-    const content = `
-        <h2>Boosters</h2>
-        <button id="subscribeButton1" class="booster-button">Subscribe to Channel 1</button>
-        <button id="subscribeButton2" class="booster-button">Subscribe to Channel 2</button>
-        <button id="subscribeButton3" class="booster-button">Subscribe to Channel 3</button>
-    `;
-    document.getElementById('mainContent').innerHTML = content;
-    
-    document.getElementById('subscribeButton1').addEventListener('click', () => showSubscribeModal('https://t.me/never_sol', 0));
-    document.getElementById('subscribeButton2').addEventListener('click', () => showSubscribeModal('https://t.me/channel2', 1));
-    document.getElementById('subscribeButton3').addEventListener('click', () => showSubscribeModal('https://t.me/channel3', 2));
+function showNotification(message) {
+    const notification = document.getElementById('notification');
+    notification.textContent = message;
+    notification.classList.remove('hidden');
+    setTimeout(() => {
+        notification.classList.add('hidden');
+    }, 3000);
 }
 
-function showSubscribeModal(channelLink, channelIndex) {
+async function showSubscribeModal(channelLink, channelIndex) {
     const modalContent = `
         <div class="subscribe-modal">
             <h3>Подписка на канал</h3>
@@ -416,94 +515,6 @@ async function checkSubscription(channelIndex) {
         showNotification("Произошла ошибка при проверке подписки. Попробуйте позже.");
     }
     hideModal();
-}
-
-async function showLeaderboardTab() {
-    try {
-        const response = await fetch('/api/leaderboard');
-        if (response.ok) {
-            const leaderboardData = await response.json();
-            console.log('Leaderboard data received:', leaderboardData);
-            updateLeaderboardUI(leaderboardData);
-        } else {
-            const errorData = await response.json();
-            console.error('Failed to fetch leaderboard data:', errorData);
-            throw new Error(errorData.error || 'Failed to fetch leaderboard data');
-        }
-    } catch (error) {
-        console.error('Error fetching leaderboard:', error);
-        document.getElementById('mainContent').innerHTML = `<p>Ошибка при загрузке таблицы лидеров: ${error.message}</p>`;
-    }
-}
-
-function showDailyTab() {
-    const content = `
-        <h2>Daily Tasks</h2>
-        <div class="daily-tasks">
-            <div class="task">
-                <h3>Daily Bonus</h3>
-                <p>Get a bonus every day</p>
-                <button id="dailyBonusButton" class="task-button">Claim Bonus</button>
-            </div>
-            <div class="task">
-                <h3>Invite a Friend</h3>
-                <p>Get a reward for each invited friend</p>
-                <button id="inviteFriendButton" class="task-button">Invite</button>
-            </div>
-            <div class="task">
-                <h3>Submit Video</h3>
-                <p>Share a video and get a reward</p>
-                <button id="submitVideoButton" class="task-button">Submit</button>
-            </div>
-        </div>
-        <div id="referralsList">
-            <h3>Invited Friends:</h3>
-            <ul id="referralsListItems"></ul>
-        </div>
-    `;
-
-    document.getElementById('mainContent').innerHTML = content;
-    document.getElementById('dailyBonusButton').addEventListener('click', showDailyBonusModal);
-    document.getElementById('inviteFriendButton').addEventListener('click', inviteFriend);
-    document.getElementById('submitVideoButton').addEventListener('click', submitVideo);
-    updateReferralsList();
-}
-
-function showDailyBonusModal() {
-    const bonusAmounts = [1, 1, 2, 3, 5, 8, 13, 21, 34, 55];
-    const currentDay = (game.dailyBonusDay % 10) + 1;
-
-    let daysHtml = '';
-    for (let i = 1; i <= 10; i++) {
-        const isCurrentDay = i === currentDay;
-        const isPastDay = i < currentDay;
-        const dayClass = isCurrentDay ? 'current-day' : (isPastDay ? 'past-day' : '');
-        const textColor = isPastDay ? 'color: black;' : '';
-        daysHtml += `
-            <div class="day-box ${dayClass}">
-                <div class="day-number" style="${textColor}">Day ${i}</div>
-                <div class="coin-icon"></div>
-                <div class="bonus-amount" style="${textColor}">${bonusAmounts[i-1]}</div>
-            </div>
-        `;
-    }
-
-    const modalContent = `
-        <div class="daily-bonus-container">
-            <div class="bonus-icon">🎁</div>
-            <h2>Daily Boost</h2>
-            <p>Get $SWITCH for daily login,<br>don't miss a day</p>
-            <div class="days-grid">
-                ${daysHtml}
-            </div>
-            <button id="claimDailyBonus" class="claim-button" ${currentDay > 10 ? 'disabled' : ''}>
-                ${currentDay > 10 ? 'Come back tomorrow' : 'Claim Bonus'}
-            </button>
-        </div>
-    `;
-
-    showModal(modalContent);
-    document.getElementById('claimDailyBonus').addEventListener('click', claimDailyBonus);
 }
 
 async function claimDailyBonus() {
@@ -631,15 +642,6 @@ function hideModal() {
     }
 }
 
-function showNotification(message) {
-    const notification = document.getElementById('notification');
-    notification.textContent = message;
-    notification.classList.remove('hidden');
-    setTimeout(() => {
-        notification.classList.add('hidden');
-    }, 3000);
-}
-
 let lastClickTime = 0;
 const clickCooldown = 100; // 100 мс между кликами
 
@@ -672,53 +674,41 @@ function showManualMiningEffect(event) {
     });
 }
 
-async function updateLeaderboardUI(leaderboardData) {
-    let content = `
-        <table>
-            <tr><th>Место</th><th>Ник</th><th>Счет</th></tr>
-    `;
+function showDailyBonusModal() {
+    const bonusAmounts = [1, 1, 2, 3, 5, 8, 13, 21, 34, 55];
+    const currentDay = (game.dailyBonusDay % 10) + 1;
 
-    leaderboardData.forEach((player, index) => {
-        content += `
-            <tr>
-                <td>${index + 1}</td>
-                <td><img src="icon_button/telegram-icon.png" alt="Telegram" class="telegram-icon">${player.username || 'Аноним'}</td>
-                <td>${formatNumber(player.balance)}</td>
-            </tr>
+    let daysHtml = '';
+    for (let i = 1; i <= 10; i++) {
+        const isCurrentDay = i === currentDay;
+        const isPastDay = i < currentDay;
+        const dayClass = isCurrentDay ? 'current-day' : (isPastDay ? 'past-day' : '');
+        const textColor = isPastDay ? 'color: black;' : '';
+        daysHtml += `
+            <div class="day-box ${dayClass}">
+                <div class="day-number" style="${textColor}">Day ${i}</div>
+                <div class="coin-icon"></div>
+                <div class="bonus-amount" style="${textColor}">${bonusAmounts[i-1]}</div>
+            </div>
         `;
-    });
+    }
 
-    content += `
-        </table>
+    const modalContent = `
+        <div class="daily-bonus-container">
+            <div class="bonus-icon">🎁</div>
+            <h2>Daily Boost</h2>
+            <p>Get $SWITCH for daily login,<br>don't miss a day</p>
+            <div class="days-grid">
+                ${daysHtml}
+            </div>
+            <button id="claimDailyBonus" class="claim-button" ${currentDay > 10 ? 'disabled' : ''}>
+                ${currentDay > 10 ? 'Come back tomorrow' : 'Claim Bonus'}
+            </button>
+        </div>
     `;
 
-    try {
-        const rankResponse = await fetch(`/api/player-rank/${tg.initDataUnsafe.user.id}`);
-        if (rankResponse.ok) {
-            const rankData = await rankResponse.json();
-            const displayRank = rankData.rank > 100 ? '100+' : rankData.rank;
-            content += `<p>Ваше место: ${displayRank}</p>`;
-        } else {
-            throw new Error('Failed to fetch player rank');
-        }
-    } catch (error) {
-        console.error('Error fetching player rank:', error);
-        content += `<p>Ваше место: N/A</p>`;
-    }
-
-    document.getElementById('leaderboard').innerHTML = content;
-}
-
-function updateReferralsList() {
-    const referralsListItems = document.getElementById('referralsListItems');
-    if (referralsListItems) {
-        referralsListItems.innerHTML = '';
-        game.referrals.forEach(referral => {
-            const li = document.createElement('li');
-            li.textContent = `${referral.username} - ${formatNumber(referral.minedAmount)} монет`;
-            referralsListItems.appendChild(li);
-        });
-    }
+    showModal(modalContent);
+    document.getElementById('claimDailyBonus').addEventListener('click', claimDailyBonus);
 }
 
 async function sendMessageToBot(message) {
@@ -754,11 +744,26 @@ function initParticles() {
         interactivity: {
             detect_on: "canvas",
             events: { onhover: { enable: true, mode: "repulse" }, onclick: { enable: true, mode: "push" }, resize: true },
-            modes: { grab: { distance: 400, line_linked: { opacity: 1 } }, bubble: { distance: 400, size: 40, duration: 2, opacity: 8, speed: 3 }, repulse: { distance: 200, duration: 0.4 }, push: { particles_nb: 4 }, remove: {particles_nb: 2 } }
+            modes: { grab: { distance: 400, line_linked: { opacity: 1 } }, bubble: { distance: 400, size: 40, duration: 2, opacity: 8, speed: 3 }, repulse: { distance: 200, duration: 0.4 }, push: { particles_nb: 4 }, remove: { particles_nb: 2 } }
         },
         retina_detect: true
     });
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOMContentLoaded event fired');
+    initGame().catch(error => {
+        console.error('Failed to initialize game:', error);
+        showNotification('Произошла ошибка при загрузке игры. Пожалуйста, обновите страницу.');
+    });
+    document.body.addEventListener('click', (event) => {
+        if (event.target.closest('#miningContainer')) {
+            handleManualMining(event);
+        }
+    });
+    
+    initTabButtons();
+});
 
 function updateGameState() {
     updateMining();
@@ -766,6 +771,7 @@ function updateGameState() {
     updateUI();
 }
 
+// Оптимизированное сохранение игры
 let lastSaveTime = 0;
 const saveInterval = 30000; // 30 секунд
 
@@ -777,11 +783,13 @@ function smartSaveGame() {
     }
 }
 
+// Измените интервал обновления
 setInterval(() => {
     updateGameState();
     smartSaveGame();
 }, 1000);
 
+// Оптимизированное обновление состояния игры
 let lastUpdateTime = 0;
 const updateInterval = 30000; // 30 секунд
 
@@ -840,38 +848,7 @@ tg.expand();
 // Инициализация Telegram Web App
 tg.ready();
 
-// Инициализация приложения
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOMContentLoaded event fired');
-    if (isMobileDevice()) {
-        console.log('Mobile device detected, initializing game...');
-        initGame().catch(error => {
-            console.error('Failed to initialize game:', error);
-            showNotification('Произошла ошибка при загрузке игры. Пожалуйста, обновите страницу.');
-            hideLoadingScreen(); // Ensure loading screen is hidden even if there's an error
-        });
-        document.body.addEventListener('click', (event) => {
-            if (event.target.closest('#miningContainer')) {
-                handleManualMining(event);
-            }
-        });
-        initTabButtons();
-    } else {
-        console.log('Desktop device detected, showing QR code...');
-        showQRCode();
-    }
-});
 
-// Экспорт функций и переменных, которые могут понадобиться в других модулях
-export {
-    initGame,
-    updateUI,
-    loadTabContent,
-    claim,
-    showNotification,
-    handleManualMining,
-    showDailyBonusModal,
-    inviteFriend,
-    submitVideo,
-    game
-};
+
+
+document.head.appendChild(style);
