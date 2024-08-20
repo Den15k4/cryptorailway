@@ -20,13 +20,15 @@
     <div id="particles-js"></div>
 
     <div id="app">
+        <div id="header">
         <img src="icon_button/paradox_logo.png" alt="$PARADOX" class="logo">
-        <div>
-            <h2>Mining Rate: <span id="miningRateValue">0.001</span> crypto/sec</h2>
+            <div id="miningRate">
+                <h2>Mining Rate: <span id="miningRateValue">0.001</span> crypto/sec</h2>
+            </div>
         </div>
-
-        <div id="mainContent" role="main"></div>
-
+        <div id="scrollableContent">
+            <div id="mainContent" role="main"></div>
+        </div>
         <div id="tabBar">
             <button class="tab-button" data-tab="main">
                 <img src="icon_button/main-icon.png" alt="Main">

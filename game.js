@@ -83,11 +83,13 @@ async function initGame() {
 }
 
 function initUI() {
+    updateMiningRateDisplay();
     showMainTab();
-    updateUI();
     initTabButtons();
-    enableScrolling();
-}
+  }
+  function updateMiningRateDisplay() {
+    document.getElementById('miningRateValue').textContent = game.miningRate.toFixed(3);
+  }
 
 function initTabButtons() {
     const tabButtons = document.querySelectorAll('.tab-button');
@@ -247,163 +249,156 @@ function updateMining() {
 }
 
 function updateUI() {
-    const miningRateElement = document.getElementById('miningRateValue');
-    if (miningRateElement) {
-        miningRateElement.textContent = game.miningRate.toFixed(3);
-    }
-    
+    updateMiningRateDisplay();
     const currentMiningElement = document.getElementById('currentMining');
     if (currentMiningElement) {
-        currentMiningElement.textContent = formatNumber(game.currentMining);
+      currentMiningElement.textContent = formatNumber(game.currentMining);
     }
-    
     const balanceElement = document.getElementById('balanceAmount');
     if (balanceElement) {
-        balanceElement.textContent = formatNumber(game.balance);
+      balanceElement.textContent = formatNumber(game.balance);
     }
-}
+  }
 
 function showMainTab() {
     const content = `
-        <div id="miningContainer" style="margin-top: 20px;">
-            <div id="miningStats">
-                <div class="stat">
-                    <p>Mined</p>
-                    <h2 id="currentMining">${formatNumber(game.currentMining)}</h2>
-                </div>
-                <div class="stat">
-                    <p>Balance</p>
-                    <h2 id="balanceAmount">${formatNumber(game.balance)}</h2>
-                </div>
-            </div>
+      <div id="miningContainer">
+        <div id="miningStats">
+          <div class="stat">
+            <p>Mined</p>
+            <h2 id="currentMining">${formatNumber(game.currentMining)}</h2>
+          </div>
+          <div class="stat">
+            <p>Balance</p>
+            <h2 id="balanceAmount">${formatNumber(game.balance)}</h2>
+          </div>
         </div>
-        <button id="claimButton">Collect</button>
+      </div>
+      <button id="claimButton">Collect</button>
     `;
     document.getElementById('mainContent').innerHTML = content;
     document.getElementById('claimButton').addEventListener('click', claim);
-}
+  }
 
-function showBoostersTab() {
+  function showBoostersTab() {
     const content = `
-        <h2>Boosters</h2>
-        <button id="subscribeButton1" class="booster-button">Subscribe to Channel 1</button>
-        <button id="subscribeButton2" class="booster-button">Subscribe to Channel 2</button>
-        <button id="subscribeButton3" class="booster-button">Subscribe to Channel 3</button>
+      <h2>Boosters</h2>
+      <button id="subscribeButton1" class="booster-button">Subscribe to Channel 1</button>
+      <button id="subscribeButton2" class="booster-button">Subscribe to Channel 2</button>
+      <button id="subscribeButton3" class="booster-button">Subscribe to Channel 3</button>
     `;
     document.getElementById('mainContent').innerHTML = content;
     
     document.getElementById('subscribeButton1').addEventListener('click', () => showSubscribeModal('https://t.me/never_sol', 0));
     document.getElementById('subscribeButton2').addEventListener('click', () => showSubscribeModal('https://t.me/channel2', 1));
     document.getElementById('subscribeButton3').addEventListener('click', () => showSubscribeModal('https://t.me/channel3', 2));
-}
+  }
 
-async function showLeaderboardTab() {
+  async function showLeaderboardTab() {
     try {
-        const response = await fetch('/api/leaderboard');
-        if (response.ok) {
-            const leaderboardData = await response.json();
-            console.log('Leaderboard data received:', leaderboardData);
-            updateLeaderboardUI(leaderboardData);
-        } else {
-            const errorData = await response.json();
-            console.error('Failed to fetch leaderboard data:', errorData);
-            throw new Error(errorData.error || 'Failed to fetch leaderboard data');
-        }
+      const response = await fetch('/api/leaderboard');
+      if (response.ok) {
+        const leaderboardData = await response.json();
+        updateLeaderboardUI(leaderboardData);
+      } else {
+        throw new Error('Failed to fetch leaderboard data');
+      }
     } catch (error) {
-        console.error('Error fetching leaderboard:', error);
-        document.getElementById('mainContent').innerHTML = `<p>Ошибка при загрузке таблицы лидеров: ${error.message}</p>`;
+      console.error('Error fetching leaderboard:', error);
+      document.getElementById('mainContent').innerHTML = `<p>Ошибка при загрузке таблицы лидеров: ${error.message}</p>`;
     }
-}
+  }
 
-async function updateLeaderboardUI(leaderboardData) {
+  function updateLeaderboardUI(leaderboardData) {
     let content = `
-        <h2>Топ игроков</h2>
-        <div id="leaderboard">
-            <table>
-                <tr><th>Место</th><th>Ник</th><th>Счет</th></tr>
+      <h2>Топ игроков</h2>
+      <div id="leaderboard">
+        <table>
+          <tr><th>Место</th><th>Ник</th><th>Счет</th></tr>
     `;
-
+  
     leaderboardData.forEach((player, index) => {
-        content += `
-            <tr>
-                <td>${index + 1}</td>
-                <td><img src="icon_button/telegram-icon.png" alt="Telegram" class="telegram-icon">${player.username || 'Аноним'}</td>
-                <td>${formatNumber(player.balance)}</td>
-            </tr>
-        `;
+      content += `
+        <tr>
+          <td>${index + 1}</td>
+          <td><img src="icon_button/telegram-icon.png" alt="Telegram" class="telegram-icon">${player.username || 'Аноним'}</td>
+          <td>${formatNumber(player.balance)}</td>
+        </tr>
+      `;
     });
-
+  
     content += `
-            </table>
-        </div>
+        </table>
+      </div>
     `;
-
-    try {
-        const rankResponse = await fetch(`/api/player-rank/${tg.initDataUnsafe.user.id}`);
-        if (rankResponse.ok) {
-            const rankData = await rankResponse.json();
-            const displayRank = rankData.rank > 100 ? '100+' : rankData.rank;
-            content += `<p>Ваше место: ${displayRank}</p>`;
-        } else {
-            throw new Error('Failed to fetch player rank');
-        }
-    } catch (error) {
-        console.error('Error fetching player rank:', error);
-        content += `<p>Ваше место: N/A</p>`;
-    }
-
+  
     document.getElementById('mainContent').innerHTML = content;
-}
+  
+    // Добавляем запрос на получение ранга игрока
+    fetch(`/api/player-rank/${tg.initDataUnsafe.user.id}`)
+      .then(response => response.json())
+      .then(data => {
+        const rankElement = document.createElement('p');
+        rankElement.textContent = `Ваше место: ${data.rank > 100 ? '100+' : data.rank}`;
+        document.getElementById('mainContent').appendChild(rankElement);
+      })
+      .catch(error => {
+        console.error('Error fetching player rank:', error);
+        const errorElement = document.createElement('p');
+        errorElement.textContent = 'Не удалось загрузить ваше место в рейтинге';
+        document.getElementById('mainContent').appendChild(errorElement);
+      });
+  }
 
-function showDailyTab() {
+  function showDailyTab() {
     const content = `
-        <h2>Daily Tasks</h2>
-        <div class="daily-tasks">
-            <div class="task">
-                <h3>Daily Bonus</h3>
-                <p>Get a bonus every day</p>
-                <button id="dailyBonusButton" class="task-button">Claim Bonus</button>
-            </div>
-            <div class="task">
-                <h3>Invite a Friend</h3>
-                <p>Get a reward for each invited friend</p>
-                <button id="inviteFriendButton" class="task-button">Invite</button>
-            </div>
-            <div class="task">
-                <h3>Submit Video</h3>
-                <p>Share a video and get a reward</p>
-                <button id="submitVideoButton" class="task-button">Submit</button>
-            </div>
+      <h2>Daily Tasks</h2>
+      <div class="daily-tasks">
+        <div class="task">
+          <h3>Daily Bonus</h3>
+          <p>Get a bonus every day</p>
+          <button id="dailyBonusButton" class="task-button">Claim Bonus</button>
         </div>
-        <div id="referralsList">
-            <h3>Invited Friends:</h3>
-            <ul id="referralsListItems"></ul>
+        <div class="task">
+          <h3>Invite a Friend</h3>
+          <p>Get a reward for each invited friend</p>
+          <button id="inviteFriendButton" class="task-button">Invite</button>
         </div>
-        <div style="height: 100px;"></div> <!-- Добавляем пустое пространство -->
+        <div class="task">
+          <h3>Submit Video</h3>
+          <p>Share a video and get a reward</p>
+          <button id="submitVideoButton" class="task-button">Submit</button>
+        </div>
+      </div>
+      <div id="referralsList">
+        <h3>Invited Friends:</h3>
+        <ul id="referralsListItems"></ul>
+      </div>
+      <div style="height: 100px;"></div> <!-- Добавляем пустое пространство для скроллинга -->
     `;
-
+  
     document.getElementById('mainContent').innerHTML = content;
     attachDailyTasksEventListeners();
     updateReferralsList();
-}
+  }
 
-function attachDailyTasksEventListeners() {
+  function attachDailyTasksEventListeners() {
     document.getElementById('dailyBonusButton').addEventListener('click', showDailyBonusModal);
     document.getElementById('inviteFriendButton').addEventListener('click', inviteFriend);
     document.getElementById('submitVideoButton').addEventListener('click', submitVideo);
-}
+  }
 
-function updateReferralsList() {
+  function updateReferralsList() {
     const referralsListItems = document.getElementById('referralsListItems');
     if (referralsListItems) {
-        referralsListItems.innerHTML = '';
-        game.referrals.forEach(referral => {
-            const li = document.createElement('li');
-            li.textContent = `${referral.username} - ${formatNumber(referral.minedAmount)} монет`;
-            referralsListItems.appendChild(li);
-        });
+      referralsListItems.innerHTML = '';
+      game.referrals.forEach(referral => {
+        const li = document.createElement('li');
+        li.textContent = `${referral.username} - ${formatNumber(referral.minedAmount)} монет`;
+        referralsListItems.appendChild(li);
+      });
     }
-}
+  }
 
 function loadTabContent(tab) {
     currentTab = tab;
