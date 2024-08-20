@@ -100,6 +100,23 @@ function initTabButtons() {
         });
     });
 }
+document.addEventListener('DOMContentLoaded', () => {
+    initGame().catch(error => {
+        console.error('Failed to initialize game:', error);
+        showNotification('Произошла ошибка при загрузке игры. Пожалуйста, обновите страницу.');
+    });
+
+    const tabButtons = document.querySelectorAll('.tab-button');
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const tab = button.getAttribute('data-tab');
+            loadTabContent(tab);
+        });
+    });
+
+    // Загрузка начальной вкладки
+    loadTabContent('main');
+});
 
 function enableScrolling() {
     const mainContent = document.getElementById('mainContent');
@@ -284,14 +301,23 @@ function showMainTab() {
 }
 
 function showBoostersTab() {
-    const content = `
+    let content = `
         <h2>Boosters</h2>
-        <button id="subscribeButton1" class="booster-button">Subscribe to Channel 1</button>
-        <button id="subscribeButton2" class="booster-button">Subscribe to Channel 2</button>
-        <button id="subscribeButton3" class="booster-button">Subscribe to Channel 3</button>
+        <div class="boosters-container">
     `;
+    
+    // Генерируем бустеры для каждого канала
+    for (let i = 1; i <= 3; i++) {
+        content += `
+            <button id="subscribeButton${i}" class="booster-button">Subscribe to Channel ${i}</button>
+        `;
+    }
+    
+    content += `</div>`;
+    
     document.getElementById('mainContent').innerHTML = content;
     
+    // Добавляем обработчики событий для каждой кнопки
     document.getElementById('subscribeButton1').addEventListener('click', () => showSubscribeModal('https://t.me/never_sol', 0));
     document.getElementById('subscribeButton2').addEventListener('click', () => showSubscribeModal('https://t.me/channel2', 1));
     document.getElementById('subscribeButton3').addEventListener('click', () => showSubscribeModal('https://t.me/channel3', 2));
@@ -406,20 +432,36 @@ function updateReferralsList() {
 
 function loadTabContent(tab) {
     currentTab = tab;
-    switch(tab) {
-        case 'main':
-            showMainTab();
-            break;
-        case 'boosters':
-            showBoostersTab();
-            break;
-        case 'leaderboard':
-            showLeaderboardTab();
-            break;
-        case 'daily':
-            showDailyTab();
-            break;
-    }
+    const mainContent = document.getElementById('mainContent');
+    
+    // Анимация исчезновения текущего контента
+    gsap.to(mainContent, {
+        opacity: 0,
+        duration: 0.3,
+        onComplete: () => {
+            // Загрузка нового контента
+            switch(tab) {
+                case 'main':
+                    showMainTab();
+                    break;
+                case 'boosters':
+                    showBoostersTab();
+                    break;
+                case 'leaderboard':
+                    showLeaderboardTab();
+                    break;
+                case 'daily':
+                    showDailyTab();
+                    break;
+            }
+            
+            // Анимация появления нового контента
+            gsap.fromTo(mainContent, 
+                { opacity: 0, y: 20 },
+                { opacity: 1, y: 0, duration: 0.3 }
+            );
+        }
+    });
 }
 
 async function claim() {
