@@ -282,29 +282,11 @@ function updateUI() {
 
   function showBoostersTab() {
     const content = `
-        <div style="margin-top: 250px;">
+        <div style="margin-top: 20px;">
       <h2>Boosters</h2>
       <button id="subscribeButton1" class="booster-button">Subscribe to Channel 1</button>
       <button id="subscribeButton2" class="booster-button">Subscribe to Channel 2</button>
       <button id="subscribeButton3" class="booster-button">Subscribe to Channel 3</button>
-       <button id="subscribeButton4" class="booster-button">Subscribe to Channel 1</button>
-      <button id="subscribeButton5" class="booster-button">Subscribe to Channel 2</button>
-      <button id="subscribeButton6" class="booster-button">Subscribe to Channel 3</button>
-       <button id="subscribeButton7" class="booster-button">Subscribe to Channel 1</button>
-      <button id="subscribeButton8" class="booster-button">Subscribe to Channel 2</button>
-      <button id="subscribeButton9" class="booster-button">Subscribe to Channel 3</button>
-      <button id="subscribeButton6" class="booster-button">Subscribe to Channel 3</button>
-       <button id="subscribeButton7" class="booster-button">Subscribe to Channel 1</button>
-      <button id="subscribeButton8" class="booster-button">Subscribe to Channel 2</button>
-      <button id="subscribeButton9" class="booster-button">Subscribe to Channel 3</button>
-      <button id="subscribeButton6" class="booster-button">Subscribe to Channel 3</button>
-       <button id="subscribeButton7" class="booster-button">Subscribe to Channel 1</button>
-      <button id="subscribeButton8" class="booster-button">Subscribe to Channel 2</button>
-      <button id="subscribeButton9" class="booster-button">Subscribe to Channel 3</button>
-      <button id="subscribeButton6" class="booster-button">Subscribe to Channel 3</button>
-       <button id="subscribeButton7" class="booster-button">Subscribe to Channel 1</button>
-      <button id="subscribeButton8" class="booster-button">Subscribe to Channel 2</button>
-      <button id="subscribeButton9" class="booster-button">Subscribe to Channel 3</button>
       </div>
     `;
     document.getElementById('mainContent').innerHTML = content;
