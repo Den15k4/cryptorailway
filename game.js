@@ -282,7 +282,7 @@ function updateUI() {
 
   function showBoostersTab() {
     const content = `
-        <div style="margin-top: 125px;">
+        <div style="margin-top: 250px;">
       <h2>Boosters</h2>
       <button id="subscribeButton1" class="booster-button">Subscribe to Channel 1</button>
       <button id="subscribeButton2" class="booster-button">Subscribe to Channel 2</button>
