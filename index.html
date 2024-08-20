@@ -19,36 +19,35 @@
 
     <div id="particles-js"></div>
 
-    <div id="app" style="display: none;">
-        <header>
-            <img src="icon_button/paradox_logo.png" alt="$PARADOX" class="logo">
-            <div id="miningRate">
-                <h2>Mining Rate: <span id="miningRateValue">0.001</span> crypto/sec</h2>
-            </div>
-        </header>
+    <div id="app">
+        <img src="icon_button/paradox_logo.png" alt="$PARADOX" class="logo">
 
-        <main id="scrollableContent">
+        <div>
+            <h2>Mining Rate: <span id="miningRateValue">0.001</span> crypto/sec</h2>
+        </div>
+
+        <div id="mainContent" role="main">
             <!-- Контент будет загружаться динамически -->
-        </main>
+        </div>
 
-        <footer id="tabBar">
+        <div id="tabBar">
             <button class="tab-button" data-tab="main">
                 <img src="icon_button/main-icon.png" alt="Main">
-                <span>Main</span>
+                Main
             </button>
             <button class="tab-button" data-tab="boosters">
                 <img src="icon_button/boost-icon.png" alt="Boosters">
-                <span>Boosters</span>
+                Boosters
             </button>
             <button class="tab-button" data-tab="leaderboard">
                 <img src="icon_button/top-icon.png" alt="Top">
-                <span>Top</span>
+                Top
             </button>
             <button class="tab-button" data-tab="daily">
                 <img src="icon_button/daily-icon.png" alt="Daily">
-                <span>Daily</span>
+                Daily
             </button>
-        </footer>
+        </div>
     </div>
 
     <div id="notification" class="hidden" role="alert" aria-live="polite"></div>

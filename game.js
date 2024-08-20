@@ -18,6 +18,21 @@ let game = {
 let saveGameTimeout;
 let currentTab = 'main';
 
+function isMobileDevice() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
+
+function showQRCode() {
+    const qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://t.me/paradox_token_bot/paradox";
+    document.body.innerHTML = `
+        <div id="qrCodeContainer">
+            <h2>$PARADOX Miner</h2>
+            <p>This app is only available on mobile devices. Scan the QR code to open the bot on your phone:</p>
+            <img src="${qrCodeUrl}" alt="QR Code" id="qrcode">
+        </div>
+    `;
+}
+
 function updateLoadingProgress(progress) {
     const progressBar = document.getElementById('progress');
     if (progressBar) {
@@ -67,9 +82,10 @@ async function initGame() {
 }
 
 function initUI() {
-    loadTabContent('main');
+    showMainTab();
     updateUI();
     initTabButtons();
+    enableScrolling();
 }
 
 function initTabButtons() {
@@ -82,6 +98,12 @@ function initTabButtons() {
             loadTabContent(tab);
         });
     });
+}
+
+function enableScrolling() {
+    const mainContent = document.getElementById('mainContent');
+    mainContent.style.overflowY = 'auto';
+    mainContent.style.maxHeight = 'calc(100vh - 60px)'; // Высота экрана минус высота нижней панели
 }
 
 function formatNumber(num) {
@@ -246,30 +268,8 @@ function updateUI() {
     }
 }
 
-function loadTabContent(tab) {
-    currentTab = tab;
-    const scrollableContent = document.getElementById('scrollableContent');
-    scrollableContent.innerHTML = '';
-
-    switch(tab) {
-        case 'main':
-            scrollableContent.appendChild(createMainTabContent());
-            break;
-        case 'boosters':
-            scrollableContent.appendChild(createBoostersTabContent());
-            break;
-        case 'leaderboard':
-            createLeaderboardTabContent();
-            break;
-        case 'daily':
-            scrollableContent.appendChild(createDailyTabContent());
-            break;
-    }
-}
-
-function createMainTabContent() {
-    const content = document.createElement('div');
-    content.innerHTML = `
+function showMainTab() {
+    const content = `
         <div id="miningContainer">
             <div id="miningStats">
                 <div class="stat">
@@ -284,77 +284,26 @@ function createMainTabContent() {
         </div>
         <button id="claimButton">Collect</button>
     `;
-    content.querySelector('#claimButton').addEventListener('click', claim);
-    return content;
+    document.getElementById('mainContent').innerHTML = content;
+    document.getElementById('claimButton').addEventListener('click', claim);
 }
 
-function createBoostersTabContent() {
-    const content = document.createElement('div');
-    content.innerHTML = `
-        <h2>Boosters</h2>
-        <button id="subscribeButton1" class="booster-button">Subscribe to Channel 1</button>
-        <button id="subscribeButton2" class="booster-button">Subscribe to Channel 2</button>
-        <button id="subscribeButton3" class="booster-button">Subscribe to Channel 3</button>
-    `;
-    
-    content.querySelector('#subscribeButton1').addEventListener('click', () => showSubscribeModal('https://t.me/never_sol', 0));
-    content.querySelector('#subscribeButton2').addEventListener('click', () => showSubscribeModal('https://t.me/channel2', 1));
-    content.querySelector('#subscribeButton3').addEventListener('click', () => showSubscribeModal('https://t.me/channel3', 2));
-    
-    return content;
-}
-
-async function createLeaderboardTabContent() {
-    const content = document.createElement('div');
-    content.innerHTML = '<h2>Топ игроков</h2><div id="leaderboard">Загрузка...</div>';
-    document.getElementById('scrollableContent').appendChild(content);
-
-    try {
-        const response = await fetch('/api/leaderboard');
-        if (response.ok) {
-            const leaderboardData = await response.json();
-            updateLeaderboardUI(leaderboardData);
-        } else {
-            throw new Error('Failed to fetch leaderboard data');
-        }
-    } catch (error) {
-        console.error('Error fetching leaderboard:', error);
-        document.getElementById('leaderboard').innerHTML = 'Ошибка при загрузке таблицы лидеров';
+function loadTabContent(tab) {
+    currentTab = tab;
+    switch(tab) {
+        case 'main':
+            showMainTab();
+            break;
+        case 'boosters':
+            showBoostersTab();
+            break;
+        case 'leaderboard':
+            showLeaderboardTab();
+            break;
+        case 'daily':
+            showDailyTab();
+            break;
     }
-}
-
-function createDailyTabContent() {
-    const content = document.createElement('div');
-    content.innerHTML = `
-        <h2>Daily Tasks</h2>
-        <div class="daily-tasks">
-            <div class="task">
-                <h3>Daily Bonus</h3>
-                <p>Get a bonus every day</p>
-                <button id="dailyBonusButton" class="task-button">Claim Bonus</button>
-            </div>
-            <div class="task">
-                <h3>Invite a Friend</h3>
-                <p>Get a reward for each invited friend</p>
-                <button id="inviteFriendButton" class="task-button">Invite</button>
-            </div>
-            <div class="task">
-                <h3>Submit Video</h3>
-                <p>Share a video and get a reward</p>
-                <button id="submitVideoButton" class="task-button">Submit</button>
-            </div>
-        </div>
-        <div id="referralsList">
-            <h3>Invited Friends:</h3>
-            <ul id="referralsListItems"></ul>
-        </div>
-    `;
-    
-    content.querySelector('#dailyBonusButton').addEventListener('click', showDailyBonusModal);
-    content.querySelector('#inviteFriendButton').addEventListener('click', inviteFriend);
-    content.querySelector('#submitVideoButton').addEventListener('click', submitVideo);
-    
-    return content;
 }
 
 async function claim() {
@@ -401,6 +350,20 @@ function showClaimEffect() {
     );
 }
 
+function showBoostersTab() {
+    const content = `
+        <h2>Boosters</h2>
+        <button id="subscribeButton1" class="booster-button">Subscribe to Channel 1</button>
+        <button id="subscribeButton2" class="booster-button">Subscribe to Channel 2</button>
+        <button id="subscribeButton3" class="booster-button">Subscribe to Channel 3</button>
+    `;
+    document.getElementById('mainContent').innerHTML = content;
+    
+    document.getElementById('subscribeButton1').addEventListener('click', () => showSubscribeModal('https://t.me/never_sol', 0));
+    document.getElementById('subscribeButton2').addEventListener('click', () => showSubscribeModal('https://t.me/channel2', 1));
+    document.getElementById('subscribeButton3').addEventListener('click', () => showSubscribeModal('https://t.me/channel3', 2));
+}
+
 function showSubscribeModal(channelLink, channelIndex) {
     const modalContent = `
         <div class="subscribe-modal">
@@ -441,6 +404,94 @@ async function checkSubscription(channelIndex) {
         showNotification("Произошла ошибка при проверке подписки. Попробуйте позже.");
     }
     hideModal();
+}
+
+async function showLeaderboardTab() {
+    try {
+        const response = await fetch('/api/leaderboard');
+        if (response.ok) {
+            const leaderboardData = await response.json();
+            console.log('Leaderboard data received:', leaderboardData);
+            updateLeaderboardUI(leaderboardData);
+        } else {
+            const errorData = await response.json();
+            console.error('Failed to fetch leaderboard data:', errorData);
+            throw new Error(errorData.error || 'Failed to fetch leaderboard data');
+        }
+    } catch (error) {
+        console.error('Error fetching leaderboard:', error);
+        document.getElementById('mainContent').innerHTML = `<p>Ошибка при загрузке таблицы лидеров: ${error.message}</p>`;
+    }
+}
+
+function showDailyTab() {
+    const content = `
+        <h2>Daily Tasks</h2>
+        <div class="daily-tasks">
+            <div class="task">
+                <h3>Daily Bonus</h3>
+                <p>Get a bonus every day</p>
+                <button id="dailyBonusButton" class="task-button">Claim Bonus</button>
+            </div>
+            <div class="task">
+                <h3>Invite a Friend</h3>
+                <p>Get a reward for each invited friend</p>
+                <button id="inviteFriendButton" class="task-button">Invite</button>
+            </div>
+            <div class="task">
+                <h3>Submit Video</h3>
+                <p>Share a video and get a reward</p>
+                <button id="submitVideoButton" class="task-button">Submit</button>
+            </div>
+        </div>
+        <div id="referralsList">
+            <h3>Invited Friends:</h3>
+            <ul id="referralsListItems"></ul>
+        </div>
+    `;
+
+    document.getElementById('mainContent').innerHTML = content;
+    document.getElementById('dailyBonusButton').addEventListener('click', showDailyBonusModal);
+    document.getElementById('inviteFriendButton').addEventListener('click', inviteFriend);
+    document.getElementById('submitVideoButton').addEventListener('click', submitVideo);
+    updateReferralsList();
+}
+
+function showDailyBonusModal() {
+    const bonusAmounts = [1, 1, 2, 3, 5, 8, 13, 21, 34, 55];
+    const currentDay = (game.dailyBonusDay % 10) + 1;
+
+    let daysHtml = '';
+    for (let i = 1; i <= 10; i++) {
+        const isCurrentDay = i === currentDay;
+        const isPastDay = i < currentDay;
+        const dayClass = isCurrentDay ? 'current-day' : (isPastDay ? 'past-day' : '');
+        const textColor = isPastDay ? 'color: black;' : '';
+        daysHtml += `
+            <div class="day-box ${dayClass}">
+                <div class="day-number" style="${textColor}">Day ${i}</div>
+                <div class="coin-icon"></div>
+                <div class="bonus-amount" style="${textColor}">${bonusAmounts[i-1]}</div>
+            </div>
+        `;
+    }
+
+    const modalContent = `
+        <div class="daily-bonus-container">
+            <div class="bonus-icon">🎁</div>
+            <h2>Daily Boost</h2>
+            <p>Get $SWITCH for daily login,<br>don't miss a day</p>
+            <div class="days-grid">
+                ${daysHtml}
+            </div>
+            <button id="claimDailyBonus" class="claim-button" ${currentDay > 10 ? 'disabled' : ''}>
+                ${currentDay > 10 ? 'Come back tomorrow' : 'Claim Bonus'}
+            </button>
+        </div>
+    `;
+
+    showModal(modalContent);
+    document.getElementById('claimDailyBonus').addEventListener('click', claimDailyBonus);
 }
 
 async function claimDailyBonus() {
@@ -609,82 +660,6 @@ function showManualMiningEffect(event) {
     });
 }
 
-function showDailyBonusModal() {
-    const bonusAmounts = [1, 1, 2, 3, 5, 8, 13, 21, 34, 55];
-    const currentDay = (game.dailyBonusDay % 10) + 1;
-
-    let daysHtml = '';
-    for (let i = 1; i <= 10; i++) {
-        const isCurrentDay = i === currentDay;
-        const isPastDay = i < currentDay;
-        const dayClass = isCurrentDay ? 'current-day' : (isPastDay ? 'past-day' : '');
-        const textColor = isPastDay ? 'color: black;' : '';
-        daysHtml += `
-            <div class="day-box ${dayClass}">
-                <div class="day-number" style="${textColor}">Day ${i}</div>
-                <div class="coin-icon"></div>
-                <div class="bonus-amount" style="${textColor}">${bonusAmounts[i-1]}</div>
-            </div>
-        `;
-    }
-
-    const modalContent = `
-        <div class="daily-bonus-container">
-            <div class="bonus-icon">🎁</div>
-            <h2>Daily Boost</h2>
-            <p>Get $SWITCH for daily login,<br>don't miss a day</p>
-            <div class="days-grid">
-                ${daysHtml}
-            </div>
-            <button id="claimDailyBonus" class="claim-button" ${currentDay > 10 ? 'disabled' : ''}>
-                ${currentDay > 10 ? 'Come back tomorrow' : 'Claim Bonus'}
-            </button>
-        </div>
-    `;
-
-    showModal(modalContent);
-    document.getElementById('claimDailyBonus').addEventListener('click', claimDailyBonus);
-}
-
-async function sendMessageToBot(message) {
-    try {
-        const response = await fetch('/send-message', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ message }),
-        });
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-        const result = await response.json();
-        console.log(result.message);
-    } catch (error) {
-        console.error('Error sending message to bot:', error);
-    }
-}
-
-function initParticles() {
-    particlesJS("particles-js", {
-        particles: {
-            number: { value: 150, density: { enable: true, value_area: 800 } },
-            color: { value: "#8774e1" },
-            shape: { type: "circle", stroke: { width: 0, color: "#000000" }, polygon: { nb_sides: 5 } },
-            opacity: { value: 0.8, random: true, anim: { enable: true, speed: 1, opacity_min: 0.1, sync: false } },
-            size: { value: 5, random: true, anim: { enable: true, speed: 3, size_min: 0.1, sync: false } },
-            line_linked: { enable: true, distance: 150, color: "#8774e1", opacity: 0.6, width: 1.5 },
-            move: { enable: true, speed: 6, direction: "none", random: true, straight: false, out_mode: "out", bounce: false, attract: { enable: false, rotateX: 600, rotateY: 1200 } }
-        },
-        interactivity: {
-            detect_on: "canvas",
-            events: { onhover: { enable: true, mode: "repulse" }, onclick: { enable: true, mode: "push" }, resize: true },
-            modes: { grab: { distance: 400, line_linked: { opacity: 1 } }, bubble: { distance: 400, size: 40, duration: 2, opacity: 8, speed: 3 }, repulse: { distance: 200, duration: 0.4}, push: { particles_nb: 4 }, remove: { particles_nb: 2 } }
-        },
-        retina_detect: true
-    });
-}
-
 async function updateLeaderboardUI(leaderboardData) {
     let content = `
         <table>
@@ -734,26 +709,44 @@ function updateReferralsList() {
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOMContentLoaded event fired');
-    if (window.Telegram && window.Telegram.WebApp) {
-        console.log('Telegram Web App is available');
-        initGame().catch(error => {
-            console.error('Failed to initialize game:', error);
-            showNotification('Произошла ошибка при загрузке игры. Пожалуйста, обновите страницу.');
+async function sendMessageToBot(message) {
+    try {
+        const response = await fetch('/send-message', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ message }),
         });
-    } else {
-        console.error('Telegram Web App is not available');
-        showNotification('Ошибка: Telegram Web App не доступен. Пожалуйста, убедитесь, что вы открываете игру через Telegram.');
-    }
-    
-    const scrollableContent = document.getElementById('scrollableContent');
-    scrollableContent.addEventListener('click', (event) => {
-        if (event.target.closest('#miningContainer')) {
-            handleManualMining(event);
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
         }
+        const result = await response.json();
+        console.log(result.message);
+    } catch (error) {
+        console.error('Error sending message to bot:', error);
+    }
+}
+
+function initParticles() {
+    particlesJS("particles-js", {
+        particles: {
+            number: { value: 150, density: { enable: true, value_area: 800 } },
+            color: { value: "#8774e1" },
+            shape: { type: "circle", stroke: { width: 0, color: "#000000" }, polygon: { nb_sides: 5 } },
+            opacity: { value: 0.8, random: true, anim: { enable: true, speed: 1, opacity_min: 0.1, sync: false } },
+            size: { value: 5, random: true, anim: { enable: true, speed: 3, size_min: 0.1, sync: false } },
+            line_linked: { enable: true, distance: 150, color: "#8774e1", opacity: 0.6, width: 1.5 },
+            move: { enable: true, speed: 6, direction: "none", random: true, straight: false, out_mode: "out", bounce: false, attract: { enable: false, rotateX: 600, rotateY: 1200 } }
+        },
+        interactivity: {
+            detect_on: "canvas",
+            events: { onhover: { enable: true, mode: "repulse" }, onclick: { enable: true, mode: "push" }, resize: true },
+            modes: { grab: { distance: 400, line_linked: { opacity: 1 } }, bubble: { distance: 400, size: 40, duration: 2, opacity: 8, speed: 3 }, repulse: { distance: 200, duration: 0.4 }, push: { particles_nb: 4 }, remove: {particles_nb: 2 } }
+        },
+        retina_detect: true
     });
-});
+}
 
 function updateGameState() {
     updateMining();
@@ -834,3 +827,36 @@ tg.expand();
 
 // Инициализация Telegram Web App
 tg.ready();
+
+// Инициализация приложения
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOMContentLoaded event fired');
+    if (isMobileDevice()) {
+        initGame().catch(error => {
+            console.error('Failed to initialize game:', error);
+            showNotification('Произошла ошибка при загрузке игры. Пожалуйста, обновите страницу.');
+        });
+        document.body.addEventListener('click', (event) => {
+            if (event.target.closest('#miningContainer')) {
+                handleManualMining(event);
+            }
+        });
+        initTabButtons();
+    } else {
+        showQRCode();
+    }
+});
+
+// Экспорт функций и переменных, которые могут понадобиться в других модулях
+export {
+    initGame,
+    updateUI,
+    loadTabContent,
+    claim,
+    showNotification,
+    handleManualMining,
+    showDailyBonusModal,
+    inviteFriend,
+    submitVideo,
+    game
+};
