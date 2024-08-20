@@ -330,23 +330,20 @@ function updateUI() {
     content += `
         </table>
       </div>
+      <p id="playerRank">Загрузка вашего места...</p>
     `;
   
     document.getElementById('mainContent').innerHTML = content;
   
-    // Добавляем запрос на получение ранга игрока только один раз
+    // Добавляем запрос на получение ранга игрока
     fetch(`/api/player-rank/${tg.initDataUnsafe.user.id}`)
       .then(response => response.json())
       .then(data => {
-        const rankElement = document.createElement('p');
-        rankElement.textContent = `Ваше место: ${data.rank > 100 ? '100+' : data.rank}`;
-        document.getElementById('mainContent').appendChild(rankElement);
+        document.getElementById('playerRank').textContent = `Ваше место: ${data.rank > 100 ? '100+' : data.rank}`;
       })
       .catch(error => {
         console.error('Error fetching player rank:', error);
-        const errorElement = document.createElement('p');
-        errorElement.textContent = 'Не удалось загрузить ваше место в рейтинге';
-        document.getElementById('mainContent').appendChild(errorElement);
+        document.getElementById('playerRank').textContent = 'Не удалось загрузить ваше место в рейтинге';
       });
 }
 
