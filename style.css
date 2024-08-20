@@ -52,7 +52,7 @@ body, html {
 
 .logo {
     width: 200px;
-    margin: 20px auto;
+    margin: 20px auto 10px;
     display: block;
 }
 
@@ -943,6 +943,26 @@ h1, h2, h3 {
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+@media screen and (max-width: 480px) {
+    #app {
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+    }
+
+    #mainContent {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start; /* Изменяем на flex-start */
+        padding: 10px;
+        padding-bottom: 70px; /* Увеличенный отступ снизу */
+    }
+
+    #miningContainer {
+        margin-top: 10px; /* Добавляем отступ сверху */
+    }
 }
 
 .progress-bar {

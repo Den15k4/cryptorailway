@@ -265,7 +265,7 @@ function updateUI() {
 
 function showMainTab() {
     const content = `
-        <div id="miningContainer">
+        <div id="miningContainer" style="margin-top: 20px;">
             <div id="miningStats">
                 <div class="stat">
                     <p>Mined</p>
@@ -379,6 +379,7 @@ function showDailyTab() {
             <h3>Invited Friends:</h3>
             <ul id="referralsListItems"></ul>
         </div>
+        <div style="height: 100px;"></div> <!-- Добавляем пустое пространство -->
     `;
 
     document.getElementById('mainContent').innerHTML = content;
