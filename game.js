@@ -282,6 +282,7 @@ function updateUI() {
 
   function showBoostersTab() {
     const content = `
+        <div style="margin-top: 125px;">
       <h2>Boosters</h2>
       <button id="subscribeButton1" class="booster-button">Subscribe to Channel 1</button>
       <button id="subscribeButton2" class="booster-button">Subscribe to Channel 2</button>
@@ -304,6 +305,7 @@ function updateUI() {
        <button id="subscribeButton7" class="booster-button">Subscribe to Channel 1</button>
       <button id="subscribeButton8" class="booster-button">Subscribe to Channel 2</button>
       <button id="subscribeButton9" class="booster-button">Subscribe to Channel 3</button>
+      </div>
     `;
     document.getElementById('mainContent').innerHTML = content;
     
