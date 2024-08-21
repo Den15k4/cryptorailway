@@ -280,21 +280,30 @@ function updateUI() {
     document.getElementById('claimButton').addEventListener('click', claim);
 }
 
-  function showBoostersTab() {
-    const content = `
-        <div style="margin-top: 20px;">
+function showBoostersTab() {
+    const channels = [
+        { name: "Channel 1", link: "https://t.me/never_sol" },
+        { name: "Channel 2", link: "https://t.me/channel2" },
+        { name: "Channel 3", link: "https://t.me/channel3" },
+        // Добавляйте новые каналы здесь
+    ];
+
+    let content = `
       <h2>Boosters</h2>
-      <button id="subscribeButton1" class="booster-button">Subscribe to Channel 1</button>
-      <button id="subscribeButton2" class="booster-button">Subscribe to Channel 2</button>
-      <button id="subscribeButton3" class="booster-button">Subscribe to Channel 3</button>
-      </div>
+      <div class="booster-container">
     `;
+    
+    channels.forEach((channel, index) => {
+        content += `<button id="subscribeButton${index}" class="booster-button">Subscribe to ${channel.name}</button>`;
+    });
+    
+    content += `</div>`;
+    
     document.getElementById('mainContent').innerHTML = content;
     
-    document.getElementById('subscribeButton1').addEventListener('click', () => showSubscribeModal('https://t.me/never_sol', 0));
-    document.getElementById('subscribeButton2').addEventListener('click', () => showSubscribeModal('https://t.me/channel2', 1));
-    document.getElementById('subscribeButton3').addEventListener('click', () => showSubscribeModal('https://t.me/channel3', 2));
-    
+    channels.forEach((channel, index) => {
+        document.getElementById(`subscribeButton${index}`).addEventListener('click', () => showSubscribeModal(channel.link, index));
+    });
 }
 
   async function showLeaderboardTab() {
@@ -393,14 +402,18 @@ function updateUI() {
   function updateReferralsList() {
     const referralsListItems = document.getElementById('referralsListItems');
     if (referralsListItems) {
-      referralsListItems.innerHTML = '';
-      game.referrals.forEach(referral => {
-        const li = document.createElement('li');
-        li.textContent = `${referral.username} - ${formatNumber(referral.minedAmount)} монет`;
-        referralsListItems.appendChild(li);
-      });
+        referralsListItems.innerHTML = '';
+        if (game.referrals.length === 0) {
+            referralsListItems.innerHTML = '<li>У вас пока нет рефералов</li>';
+        } else {
+            game.referrals.forEach(referral => {
+                const li = document.createElement('li');
+                li.textContent = `${referral.username || 'Аноним'} - ${formatNumber(referral.minedAmount)} монет`;
+                referralsListItems.appendChild(li);
+            });
+        }
     }
-  }
+}
 
 function loadTabContent(tab) {
     currentTab = tab;
@@ -568,13 +581,27 @@ async function handleReferral(referrerId) {
             method: 'POST'
         });
         if (response.ok) {
-            showNotification('Вы успешно присоединились по реферальной ссылке!');
+            const data = await response.json();
+            if (data.success) {
+                game.referrals.push({
+                    id: tg.initDataUnsafe.user.id,
+                    username: tg.initDataUnsafe.user.username,
+                    minedAmount: 0
+                });
+                showNotification('Вы успешно присоединились по реферальной ссылке!');
+                updateReferralsList();
+                await saveGame();
+            } else {
+                showNotification('Вы уже были приглашены ранее или произошла ошибка.');
+            }
         } else {
             const data = await response.json();
             console.error('Failed to process referral:', data.error);
+            showNotification('Произошла ошибка при обработке реферальной ссылки.');
         }
     } catch (error) {
         console.error('Error processing referral:', error);
+        showNotification('Произошла ошибка при обработке реферальной ссылки.');
     }
 }
 
