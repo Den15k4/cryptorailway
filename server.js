@@ -84,12 +84,12 @@ app.post(`/webhook/${process.env.TELEGRAM_BOT_TOKEN}`, async (req, res) => {
     if (message && message.text === '/start') {
       await axios.post(`${TELEGRAM_API}/sendMessage`, {
         chat_id: message.chat.id,
-        text: 'Добро пожаловать в CryptoVerse Miner!'
+        text: 'Welcome to $PRDX Miner!'
       });
     } else if (message && message.text === '/help') {
       await axios.post(`${TELEGRAM_API}/sendMessage`, {
         chat_id: message.chat.id,
-        text: 'Это игра-симулятор майнинга криптовалюты. Чтобы начать, просто откройте веб-приложение!'
+        text: 'This is a cryptocurrency mining simulation game. To get started, simply open the web app!'
       });
     }
     
