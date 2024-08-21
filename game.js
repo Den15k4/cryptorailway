@@ -366,7 +366,8 @@ function showBoostersTab() {
 
   function showDailyTab() {
     const content = `
-          <h2>Daily Tasks</h2>
+    <div style="margin-top: 10px;">
+      <h2>Daily Tasks</h2>
       <div class="daily-tasks">
         <div class="task">
           <h3>Daily Bonus</h3>
