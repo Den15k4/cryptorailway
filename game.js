@@ -279,7 +279,7 @@ function updateUI() {
           </div>
         </div>
       </div>
-      <button id="claimButton">Collect</button>
+      <button id="claimButton">CLAIM</button>
     `;
     document.getElementById('mainContent').innerHTML = content;
     document.getElementById('claimButton').addEventListener('click', claim);
@@ -287,7 +287,7 @@ function updateUI() {
 
 function showBoostersTab() {
     const channels = [
-        { name: "Channel 1", link: "https://t.me/never_sol" },
+        { name: "Channel 1", link: "https://t.me/edulidcom" },
         { name: "Channel 2", link: "https://t.me/channel2" },
         { name: "Channel 3", link: "https://t.me/channel3" },
         // Добавляйте новые каналы здесь
@@ -440,7 +440,7 @@ function loadTabContent(tab) {
 
 async function claim() {
     if (game.currentMining < 0.1) {
-        showNotification("Недостаточно крипто для сбора. Минимум 0.1");
+        showNotification("Minimum 0.1 for claim");
         return;
     }
     try {
@@ -461,8 +461,8 @@ async function claim() {
             
             updateUI();
             showClaimEffect();
-            showNotification("Крипто успешно собрано!");
-            sendMessageToBot(`Пользователь ${tg.initDataUnsafe.user.username} собрал ${formatNumber(data.amount)} монет!`);
+            showNotification("Successful claim");
+            sendMessageToBot(`Miner ${tg.initDataUnsafe.user.username} claim ${formatNumber(data.amount)} tokens!`);
             await updateLeaderboard();
             await saveGame();
             tg.HapticFeedback.impactOccurred('medium');
@@ -471,7 +471,7 @@ async function claim() {
         }
     } catch (error) {
         console.error('Error claiming mining:', error);
-        showNotification("Произошла ошибка при сборе крипто. Попробуйте еще раз.");
+        showNotification("Error : try again!");
     }
 }
 
@@ -495,9 +495,9 @@ async function showSubscribeModal(channelLink, channelIndex) {
     const modalContent = `
         <div class="subscribe-modal">
             <h3>Подписка на канал</h3>
-            <p>Для получения ускорителя, подпишитесь на канал:</p>
-            <a href="${channelLink}" target="_blank" class="subscribe-link" id="subscribeLink">Перейти на канал</a>
-            <button id="checkSubscriptionButton" class="check-subscription" disabled>Проверить подписку</button>
+            <p>For update hashrate - you need subscribe for channel!</p>
+            <a href="${channelLink}" target="_blank" class="subscribe-link" id="subscribeLink">Go to channel</a>
+            <button id="checkSubscriptionButton" class="check-subscription" disabled>Check Subscribe</button>
         </div>
     `;
     showModal(modalContent);
@@ -516,19 +516,19 @@ async function checkSubscription(channelIndex) {
             const data = await response.json();
             if (!game.subscribedChannels.includes(channelIndex)) {
                 game.subscribedChannels.push(channelIndex);
-                game.miningRate += 0.003;
-                showNotification("Ускоритель активирован! +0.003 к скорости добычи");
+                game.miningRate += 0.001;
+                showNotification("Booster active - You have +0.001 for hashrate!");
                 updateUI();
                 await saveGame();
             } else {
-                showNotification("Вы уже активировали этот ускоритель.");
+                showNotification("You have already activated this boost");
             }
         } else {
             throw new Error('Failed to check subscription');
         }
     } catch (error) {
         console.error('Error checking subscription:', error);
-        showNotification("Произошла ошибка при проверке подписки. Попробуйте позже.");
+        showNotification("Error checking subscription, try again later");
     }
     hideModal();
 }
@@ -546,15 +546,15 @@ async function claimDailyBonus() {
             
             localStorage.setItem('lastDailyBonusTime', Date.now().toString());
             
-            showNotification(`Вы получили ежедневный бонус: ${data.bonusAmount} монет!`);
+            showNotification(`You received a daily bonus: ${data.bonusAmount} tokens!`);
             updateUI();
             await saveGame();
         } else {
-            showNotification(data.error || "Не удалось получить ежедневный бонус. Попробуйте позже.");
+            showNotification(data.error || "Failed to receive daily bonus. Please try again later.");
         }
     } catch (error) {
         console.error('Error claiming daily bonus:', error);
-        showNotification("Произошла ошибка при получении ежедневного бонуса. Попробуйте позже.");
+        showNotification("Failed to receive daily bonus. Please try again later.");
     } finally {
         hideModal();
     }
@@ -566,7 +566,7 @@ function inviteFriend() {
     console.log('User:', tg.initDataUnsafe.user);
     
     const referralLink = `https://t.me/paradox_token_bot/paradox?start=ref_${tg.initDataUnsafe.user.id}`;
-    const shareText = encodeURIComponent(`Присоединяйся к CryptoVerse Miner! Заходи и начинай майнить!`);
+    const shareText = encodeURIComponent(`Welcome to mining $PRDX!`);
     const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${shareText}`;
     
     window.open(shareUrl, '_blank');
@@ -593,28 +593,28 @@ async function handleReferral(referrerId) {
                     username: tg.initDataUnsafe.user.username,
                     minedAmount: 0
                 });
-                showNotification('Вы успешно присоединились по реферальной ссылке!');
+                showNotification('You have successfully joined using your referral link!');
                 updateReferralsList();
                 await saveGame();
             } else {
-                showNotification('Вы уже были приглашены ранее или произошла ошибка.');
+                showNotification('You have already been invited before or an error occurred');
             }
         } else {
             const data = await response.json();
             console.error('Failed to process referral:', data.error);
-            showNotification('Произошла ошибка при обработке реферальной ссылки.');
+            showNotification('An error occurred while processing the referral link');
         }
     } catch (error) {
         console.error('Error processing referral:', error);
-        showNotification('Произошла ошибка при обработке реферальной ссылки.');
+        showNotification('An error occurred while processing the referral link');
     }
 }
 
 async function submitVideo() {
     const content = `
         <h3>Отправить видео</h3>
-        <input type="text" id="videoLink" placeholder="Вставьте ссылку на видео">
-        <button id="submitVideoLinkButton" class="daily-button">Отправить</button>
+        <input type="text" id="videoLink" placeholder="Insert video link">
+        <button id="submitVideoLinkButton" class="daily-button">Send</button>
     `;
     showModal(content);
     document.getElementById('submitVideoLinkButton').addEventListener('click', async () => {
@@ -632,18 +632,18 @@ async function submitVideo() {
                     const data = await response.json();
                     game.balance += data.reward;
                     game.lastVideoSubmission = Date.now();
-                    showNotification(`Видео принято! Вы получили ${data.reward} монет.`);
+                    showNotification(`Video accepted! you got ${data.reward} tokens`);
                     updateUI();
                     await saveGame();
                     await updateLeaderboard();
                     hideModal();
                 } else {
                     const errorData = await response.json();
-                    showNotification(errorData.error || "Произошла ошибка при отправке видео.");
+                    showNotification(errorData.error || "An error occurred while sending the video.");
                 }
             } catch (error) {
                 console.error('Error submitting video:', error);
-                showNotification("Произошла ошибка при отправке видео. Попробуйте позже.");
+                showNotification("An error occurred while sending the video. Try again later");
             }
         } else {
             showNotification("Пожалуйста, введите ссылку на видео.");
@@ -727,7 +727,7 @@ function showDailyBonusModal() {
         <div class="daily-bonus-container">
             <div class="bonus-icon">🎁</div>
             <h2>Daily Boost</h2>
-            <p>Get $SWITCH for daily login,<br>don't miss a day</p>
+            <p>Get $PRDX for daily login,<br>don't miss a day</p>
             <div class="days-grid">
                 ${daysHtml}
             </div>
@@ -784,7 +784,7 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('DOMContentLoaded event fired');
     initGame().catch(error => {
         console.error('Failed to initialize game:', error);
-        showNotification('Произошла ошибка при загрузке игры. Пожалуйста, обновите страницу.');
+        showNotification('An error occurred while loading the game. Please refresh the page.');
     });
     document.body.addEventListener('click', (event) => {
         if (event.target.closest('#miningContainer')) {
@@ -848,7 +848,7 @@ async function syncWithServer() {
         console.log('Game synced successfully');
     } catch (error) {
         console.error('Error syncing game:', error);
-        showNotification('Не удалось синхронизировать прогресс. Автоматическая попытка через 5 секунд...');
+        showNotification('Loading...');
         setTimeout(syncWithServer, 5000);
     }
 }
