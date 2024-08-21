@@ -249,16 +249,21 @@ function updateMining() {
 }
 
 function updateUI() {
-    updateMiningRateDisplay();
+    const miningRateValueElement = document.getElementById('miningRateValue');
+    if (miningRateValueElement) {
+        miningRateValueElement.textContent = game.miningRate.toFixed(3);
+    }
+
     const currentMiningElement = document.getElementById('currentMining');
     if (currentMiningElement) {
-      currentMiningElement.textContent = formatNumber(game.currentMining);
+        currentMiningElement.textContent = formatNumber(game.currentMining);
     }
+
     const balanceElement = document.getElementById('balanceAmount');
     if (balanceElement) {
-      balanceElement.textContent = formatNumber(game.balance);
+        balanceElement.textContent = formatNumber(game.balance);
     }
-  }
+}
 
   function showMainTab() {
     const content = `
