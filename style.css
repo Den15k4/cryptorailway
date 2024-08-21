@@ -78,9 +78,14 @@ body, html {
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     padding: 20px;
-    margin-top: 100px; /* Настройте в зависимости от высоты header'а */
-    margin-bottom: 60px; /* Настройте в зависимости от высоты footer'а */
+    margin-top: 120px; /* Настройте в зависимости от высоты header'а */
+    margin-bottom: 70px; /* Настройте в зависимости от высоты footer'а */
     height: calc(100vh - 160px); /* Вычитаем высоту header'а и footer'а */
+}
+.booster-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
 #mainContent {
@@ -89,6 +94,7 @@ body, html {
     align-items: center;
     position: relative;
     z-index: 2;
+    min-height: 100%;
 }
 
 h1, h2, h3 {
