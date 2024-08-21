@@ -582,31 +582,41 @@ function checkReferral() {
 
 async function handleReferral(referrerId) {
     try {
+        // Проверяем, что referrerId не совпадает с ID текущего пользователя
+        if (referrerId === tg.initDataUnsafe.user.id) {
+            showNotification('You dont have use this link');
+            return;
+        }
+
         const response = await fetch(`/api/referral/${tg.initDataUnsafe.user.id}/${referrerId}`, {
-            method: 'POST'
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                username: tg.initDataUnsafe.user.username
+            })
         });
+
         if (response.ok) {
             const data = await response.json();
             if (data.success) {
-                game.referrals.push({
-                    id: tg.initDataUnsafe.user.id,
-                    username: tg.initDataUnsafe.user.username,
-                    minedAmount: 0
-                });
-                showNotification('You have successfully joined using your referral link!');
-                updateReferralsList();
+                // Обновляем данные текущего пользователя
+                game.miningRate += 0.001; // Увеличиваем скорость майнинга
+                showNotification('Вы успешно присоединились по реферальной ссылке! Ваша скорость майнинга увеличена.');
+                updateUI();
                 await saveGame();
             } else {
-                showNotification('You have already been invited before or an error occurred');
+                showNotification('Вы уже были приглашены ранее или произошла ошибка');
             }
         } else {
-            const data = await response.json();
-            console.error('Failed to process referral:', data.error);
-            showNotification('An error occurred while processing the referral link');
+            const errorData = await response.json();
+            console.error('Не удалось обработать реферальную ссылку:', errorData.error);
+            showNotification('Произошла ошибка при обработке реферальной ссылки');
         }
     } catch (error) {
-        console.error('Error processing referral:', error);
-        showNotification('An error occurred while processing the referral link');
+        console.error('Ошибка при обработке реферальной ссылки:', error);
+        showNotification('Произошла ошибка при обработке реферальной ссылки');
     }
 }
 
