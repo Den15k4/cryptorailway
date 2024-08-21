@@ -77,7 +77,7 @@ async function initGame() {
         initParticles();
     } catch (error) {
         console.error('Error during game initialization:', error);
-        showNotification('Произошла ошибка при загрузке игры. Пожалуйста, обновите страницу.');
+        showNotification('Error. Please Refresh app');
         hideLoadingScreen();
     }
 }
@@ -161,7 +161,7 @@ async function loadGame() {
         }
     } catch (error) {
         console.error('Error loading game:', error);
-        showNotification('Произошла ошибка при загрузке игры. Пожалуйста, попробуйте еще раз.');
+        showNotification('Error. Please try again.');
     }
 }
 
@@ -199,7 +199,7 @@ async function saveGame() {
         saveGameToLocalStorage();
     } catch (error) {
         console.error('Error saving game:', error);
-        showNotification('Не удалось сохранить прогресс. Автоматическая попытка через 5 секунд...');
+        showNotification('Loading...');
         setTimeout(() => saveGame(), 5000);
     }
 }
@@ -322,7 +322,7 @@ function showBoostersTab() {
       }
     } catch (error) {
       console.error('Error fetching leaderboard:', error);
-      document.getElementById('mainContent').innerHTML = `<p>Ошибка при загрузке таблицы лидеров: ${error.message}</p>`;
+      document.getElementById('mainContent').innerHTML = `<p>Error for loading leaderboard ${error.message}</p>`;
     }
   }
 
@@ -347,7 +347,7 @@ function showBoostersTab() {
     content += `
         </table>
       </div>
-      <p id="playerRank">Загрузка вашего места...</p>
+      <p id="playerRank">Loading you rank...</p>
     `;
   
     document.getElementById('mainContent').innerHTML = content;
@@ -360,7 +360,7 @@ function showBoostersTab() {
       })
       .catch(error => {
         console.error('Error fetching player rank:', error);
-        document.getElementById('playerRank').textContent = 'Не удалось загрузить ваше место в рейтинге';
+        document.getElementById('playerRank').textContent = 'Error loading you rank';
       });
 }
 
@@ -409,11 +409,11 @@ function showBoostersTab() {
     if (referralsListItems) {
         referralsListItems.innerHTML = '';
         if (game.referrals.length === 0) {
-            referralsListItems.innerHTML = '<li>У вас пока нет рефералов</li>';
+            referralsListItems.innerHTML = '<li>You dont have refferrals</li>';
         } else {
             game.referrals.forEach(referral => {
                 const li = document.createElement('li');
-                li.textContent = `${referral.username || 'Аноним'} - ${formatNumber(referral.minedAmount)} монет`;
+                li.textContent = `${referral.username || 'Anonym'} - ${formatNumber(referral.minedAmount)} tokens`;
                 referralsListItems.appendChild(li);
             });
         }
@@ -646,7 +646,7 @@ async function submitVideo() {
                 showNotification("An error occurred while sending the video. Try again later");
             }
         } else {
-            showNotification("Пожалуйста, введите ссылку на видео.");
+            showNotification("Please instert link on video");
         }
     });
 }
