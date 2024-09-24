@@ -17,6 +17,8 @@ let game = {
 
 let saveGameTimeout;
 let currentTab = 'main';
+let referralCode = null;
+
 function isMobileDevice() {
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 }
@@ -63,14 +65,19 @@ async function initGame() {
         console.log('Loading game data...');
         await loadGame();
         updateLoadingProgress(40);
+        
+        // Проверяем и обрабатываем реферальный код здесь
+        if (referralCode) {
+            console.log('Обработка реферального кода:', referralCode);
+            await handleReferral(referralCode);
+        }
+        
         console.log('Updating leaderboard...');
         await updateLeaderboard();
         updateLoadingProgress(70);
         console.log('Initializing UI...');
         initUI();
         updateLoadingProgress(90);
-        console.log('Checking referral...');
-        checkReferral();
         updateLoadingProgress(100);
         console.log('Game initialization complete.');
         setTimeout(hideLoadingScreen, 500);
@@ -86,10 +93,11 @@ function initUI() {
     updateMiningRateDisplay();
     showMainTab();
     initTabButtons();
-  }
-  function updateMiningRateDisplay() {
+}
+
+function updateMiningRateDisplay() {
     document.getElementById('miningRateValue').textContent = game.miningRate.toFixed(3);
-  }
+}
 
 function initTabButtons() {
     const tabButtons = document.querySelectorAll('.tab-button');
@@ -265,7 +273,7 @@ function updateUI() {
     }
 }
 
-  function showMainTab() {
+function showMainTab() {
     const content = `
       <div id="miningContainer" style="margin-top: 20px;">
         <div id="miningStats">
@@ -311,7 +319,7 @@ function showBoostersTab() {
     });
 }
 
-  async function showLeaderboardTab() {
+async function showLeaderboardTab() {
     try {
       const response = await fetch('/api/leaderboard');
       if (response.ok) {
@@ -322,11 +330,11 @@ function showBoostersTab() {
       }
     } catch (error) {
       console.error('Error fetching leaderboard:', error);
-      document.getElementById('mainContent').innerHTML = `<p>Error for loading leaderboard ${error.message}</p>`;
+      document.getElementById('mainContent').innerHTML = `<p>Error loading leaderboard: ${error.message}</p>`;
     }
-  }
+}
 
-  function updateLeaderboardUI(leaderboardData) {
+function updateLeaderboardUI(leaderboardData) {
     let content = `
       <h2>Топ игроков</h2>
       <div id="leaderboard">
@@ -347,7 +355,7 @@ function showBoostersTab() {
     content += `
         </table>
       </div>
-      <p id="playerRank">Loading you rank...</p>
+      <p id="playerRank">Loading your rank...</p>
     `;
   
     document.getElementById('mainContent').innerHTML = content;
@@ -360,11 +368,11 @@ function showBoostersTab() {
       })
       .catch(error => {
         console.error('Error fetching player rank:', error);
-        document.getElementById('playerRank').textContent = 'Error loading you rank';
+        document.getElementById('playerRank').textContent = 'Error loading your rank';
       });
 }
 
-  function showDailyTab() {
+function showDailyTab() {
     const content = `
     <div style="margin-top: 10px;">
       <h2>Daily Tasks</h2>
@@ -390,30 +398,30 @@ function showBoostersTab() {
         <ul id="referralsListItems"></ul>
       </div>
       <div style="height: 100px;"></div>
-      </div> <!-- Добавляем пустое пространство для скроллинга -->
+    </div>
     `;
   
     document.getElementById('mainContent').innerHTML = content;
     attachDailyTasksEventListeners();
     updateReferralsList();
-  }
+}
 
-  function attachDailyTasksEventListeners() {
+function attachDailyTasksEventListeners() {
     document.getElementById('dailyBonusButton').addEventListener('click', showDailyBonusModal);
     document.getElementById('inviteFriendButton').addEventListener('click', inviteFriend);
     document.getElementById('submitVideoButton').addEventListener('click', submitVideo);
-  }
+}
 
-  function updateReferralsList() {
+function updateReferralsList() {
     const referralsListItems = document.getElementById('referralsListItems');
     if (referralsListItems) {
         referralsListItems.innerHTML = '';
         if (game.referrals.length === 0) {
-            referralsListItems.innerHTML = '<li>You dont have refferrals</li>';
+            referralsListItems.innerHTML = '<li>You don\'t have referrals</li>';
         } else {
             game.referrals.forEach(referral => {
                 const li = document.createElement('li');
-                li.textContent = `${referral.username || 'Anonym'} - ${formatNumber(referral.minedAmount)} tokens`;
+                li.textContent = `${referral.username || 'Anonymous'} - ${formatNumber(referral.minedAmount)} tokens`;
                 referralsListItems.appendChild(li);
             });
         }
@@ -462,7 +470,7 @@ async function claim() {
             updateUI();
             showClaimEffect();
             showNotification("Successful claim");
-            sendMessageToBot(`Miner ${tg.initDataUnsafe.user.username} claim ${formatNumber(data.amount)} tokens!`);
+            sendMessageToBot(`Miner ${tg.initDataUnsafe.user.username} claimed ${formatNumber(data.amount)} tokens!`);
             await updateLeaderboard();
             await saveGame();
             tg.HapticFeedback.impactOccurred('medium');
@@ -471,7 +479,7 @@ async function claim() {
         }
     } catch (error) {
         console.error('Error claiming mining:', error);
-        showNotification("Error : try again!");
+        showNotification("Error: try again!");
     }
 }
 
@@ -574,9 +582,10 @@ function inviteFriend() {
 
 function checkReferral() {
     const urlParams = new URLSearchParams(window.location.search);
-    const referralCode = urlParams.get('start');
-    if (referralCode && referralCode.startsWith('ref_')) {
-        handleReferral(referralCode.slice(4));
+    const startParam = urlParams.get('start');
+    if (startParam && startParam.startsWith('ref_')) {
+        referralCode = startParam.slice(4);
+        console.log('Найден реферальный код:', referralCode);
     }
 }
 
@@ -584,7 +593,7 @@ async function handleReferral(referrerId) {
     try {
         // Проверяем, что referrerId не совпадает с ID текущего пользователя
         if (referrerId === tg.initDataUnsafe.user.id) {
-            showNotification('You dont have use this link');
+            console.log('Пользователь пытается использовать собственную реферальную ссылку');
             return;
         }
 
@@ -607,16 +616,14 @@ async function handleReferral(referrerId) {
                 updateUI();
                 await saveGame();
             } else {
-                showNotification('Вы уже были приглашены ранее или произошла ошибка');
+                console.log('Реферальный код уже использован или произошла ошибка');
             }
         } else {
             const errorData = await response.json();
             console.error('Не удалось обработать реферальную ссылку:', errorData.error);
-            showNotification('Произошла ошибка при обработке реферальной ссылки');
         }
     } catch (error) {
         console.error('Ошибка при обработке реферальной ссылки:', error);
-        showNotification('Произошла ошибка при обработке реферальной ссылки');
     }
 }
 
@@ -642,7 +649,7 @@ async function submitVideo() {
                     const data = await response.json();
                     game.balance += data.reward;
                     game.lastVideoSubmission = Date.now();
-                    showNotification(`Video accepted! you got ${data.reward} tokens`);
+                    showNotification(`Video accepted! You got ${data.reward} tokens`);
                     updateUI();
                     await saveGame();
                     await updateLeaderboard();
@@ -656,7 +663,7 @@ async function submitVideo() {
                 showNotification("An error occurred while sending the video. Try again later");
             }
         } else {
-            showNotification("Please instert link on video");
+            showNotification("Please insert link to video");
         }
     });
 }
@@ -792,6 +799,7 @@ function initParticles() {
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log('DOMContentLoaded event fired');
+    checkReferral(); // Добавляем эту строку перед initGame
     initGame().catch(error => {
         console.error('Failed to initialize game:', error);
         showNotification('An error occurred while loading the game. Please refresh the page.');
@@ -887,8 +895,3 @@ tg.expand();
 
 // Инициализация Telegram Web App
 tg.ready();
-
-
-
-
-document.head.appendChild(style);

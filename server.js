@@ -151,17 +151,18 @@ app.get('/api/game/:userId', authenticateUser, async (req, res) => {
         daily_bonus_day: 0,
         last_daily_bonus_time: 0,
         referrals: [],
+        referred_by: null,
         last_video_submission: 0
       };
       await pool.query(`
-        INSERT INTO users (id, username, current_mining, total_mined, balance, last_claim_time, last_login_time, mining_rate, subscribed_channels, daily_bonus_day, last_daily_bonus_time, referrals, last_video_submission)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-      `, [newUser.id, newUser.username, newUser.current_mining, newUser.total_mined, newUser.balance, newUser.last_claim_time, newUser.last_login_time, newUser.mining_rate, JSON.stringify(newUser.subscribed_channels), newUser.daily_bonus_day, newUser.last_daily_bonus_time, JSON.stringify(newUser.referrals), newUser.last_video_submission]);
+        INSERT INTO users (id, username, current_mining, total_mined, balance, last_claim_time, last_login_time, mining_rate, subscribed_channels, daily_bonus_day, last_daily_bonus_time, referrals, referred_by, last_video_submission)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      `, [newUser.id, newUser.username, newUser.current_mining, newUser.total_mined, newUser.balance, newUser.last_claim_time, newUser.last_login_time, newUser.mining_rate, JSON.stringify(newUser.subscribed_channels), newUser.daily_bonus_day, newUser.last_daily_bonus_time, JSON.stringify(newUser.referrals), newUser.referred_by, newUser.last_video_submission]);
       res.json(newUser);
     }
   } catch (error) {
-    logger.error('Error loading game:', error);
-    res.status(500).json({ error: 'Error loading game data' });
+    logger.error('Ошибка загрузки игры:', error);
+    res.status(500).json({ error: 'Ошибка загрузки данных игры' });
   }
 });
 
@@ -294,28 +295,41 @@ app.post('/api/referral/:userId/:referralCode', authenticateUser, async (req, re
   try {
     const userId = req.params.userId;
     const referralCode = req.params.referralCode;
-    const referrerResult = await pool.query('SELECT * FROM users WHERE id = $1', [referralCode]);
-    if (referrerResult.rows.length > 0) {
-      const referrer = referrerResult.rows[0];
-      const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
-      if (userResult.rows.length > 0) {
-        const user = userResult.rows[0];
-        if (!referrer.referrals.some(r => r.id === userId)) {
-          referrer.referrals.push({ id: userId, username: user.username, minedAmount: 0 });
-          await pool.query('UPDATE users SET referrals = $1 WHERE id = $2', [JSON.stringify(referrer.referrals), referralCode]);
-          res.json({ success: true });
-        } else {
-          res.status(400).json({ error: 'User already referred' });
-        }
-      } else {
-        res.status(404).json({ error: 'User not found' });
-      }
-    } else {
-      res.status(404).json({ error: 'Referrer not found' });
+    const { username } = req.body;
+
+    // Проверяем, не пытается ли пользователь использовать свой собственный код
+    if (userId === referralCode) {
+      return res.status(400).json({ error: 'Нельзя использовать собственный реферальный код' });
     }
+
+    // Проверяем существование реферера
+    const referrerResult = await pool.query('SELECT * FROM users WHERE id = $1', [referralCode]);
+    if (referrerResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Реферер не найден' });
+    }
+
+    // Проверяем, не использовал ли уже пользователь реферальный код
+    const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Пользователь не найден' });
+    }
+    const user = userResult.rows[0];
+    if (user.referred_by) {
+      return res.status(400).json({ error: 'Вы уже использовали реферальный код' });
+    }
+
+    // Обновляем данные пользователя
+    await pool.query('UPDATE users SET referred_by = $1, mining_rate = mining_rate + 0.001 WHERE id = $2', [referralCode, userId]);
+
+    // Обновляем данные реферера
+    const referrer = referrerResult.rows[0];
+    const updatedReferrals = [...referrer.referrals, { id: userId, username, minedAmount: 0 }];
+    await pool.query('UPDATE users SET referrals = $1, mining_rate = mining_rate + 0.001 WHERE id = $2', [JSON.stringify(updatedReferrals), referralCode]);
+
+    res.json({ success: true, message: 'Реферальный код успешно применен' });
   } catch (error) {
-    logger.error('Error processing referral:', error);
-    res.status(500).json({ error: 'Error processing referral' });
+    logger.error('Ошибка при обработке реферального кода:', error);
+    res.status(500).json({ error: 'Ошибка при обработке реферального кода' });
   }
 });
 
